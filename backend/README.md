@@ -25,9 +25,19 @@ All "AI" logic lives in one place: `app/services/ai_service.py`.
 
 ## 2. How the "AI" works (important!)
 
+<<<<<<< HEAD
 - If you set `OPENAI_API_KEY` in a `.env` file, the app calls the real
   OpenAI API for insights, scoring reasoning, emails, and summaries.
 - If you **don't** set a key, every AI function automatically falls back
+=======
+- If you set `GROQ_API_KEY` in a `.env` file, the app calls Groq's free
+  Llama 3.3 API for insights, scoring reasoning, emails, and summaries.
+  **Groq is recommended for students** - free, no credit card, sign up at
+  https://console.groq.com
+- `OPENAI_API_KEY` is also supported as an alternative, but OpenAI no
+  longer reliably gives free trial credits to new accounts.
+- If you set **neither** key, every AI function automatically falls back
+>>>>>>> 0a08b43 (Update backend code)
   to simple rule-based / template logic (point-based scoring, template
   emails, keyword-based summaries). The app still works 100%.
 
