@@ -25,5 +25,9 @@ export async function loginRequest({ email, password }) {
     throw new Error('Incorrect email or password. Try the demo credentials below.')
   }
 
-  return { email: DEMO_USER.email, name: DEMO_USER.name, role: DEMO_USER.role }
+  return {
+    email: DEMO_USER.email,
+    name: DEMO_USER.name,
+    role: DEMO_USER.role,
+  }
 }
