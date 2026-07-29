@@ -1,42 +1,35 @@
-import { delay } from './delay.js'
-// NOTE: named import, matching mockLeads.js's named exports.
-// A default import here (`import mockLeads from ...`) is the classic bug —
-// there's no `export default` in mockLeads.js, so it silently resolves to
-// `undefined` instead of throwing, and everything downstream breaks.
-import { mockLeads } from '../data/mockLeads.js'
+import { apiClient } from "./client";
 
-// ---- Mock async API layer ----
-// Every function here is async and can fail, exactly like a real fetch() call
-// would (see api/client.js). When the FastAPI backend is ready, replace the
-// body of each function with a real request through apiClient — callers
-// already await these and already handle thrown errors, so no other code
-// needs to change.
-
-/**
- * Fetch all leads.
- * Real version:
- *   import { apiClient } from './client.js'
- *   export async function fetchLeads() {
- *     return apiClient.get('/leads')
- *   }
- */
-export async function fetchLeads() {
-  await delay(500)
-  return mockLeads
+function mapLead(lead) {
+  return {
+    id: lead.lead_id,
+    company: lead.company_name,
+    industry: lead.industry,
+    contactName: lead.contact_name,
+    contactTitle: "", // Backend doesn't provide this
+    email: lead.email,
+    phone: lead.phone,
+    companySize: lead.company_size,
+    annualRevenue: lead.annual_revenue,
+    location: lead.location,
+    fundingStage: lead.funding_stage,
+    fundingAmount: "", // Backend doesn't provide this
+    techStack: lead.technology_stack
+      ? lead.technology_stack.split(",").map((t) => t.trim())
+      : [],
+    segment: lead.lead_status,
+    lastActivity: new Date(lead.created_at).toLocaleDateString(),
+    qualificationScore: 75, // Placeholder until backend provides a score
+    insights: [] // Placeholder until backend provides insights
+  };
 }
 
-/**
- * Fetch a single lead by id. Throws if not found, mirroring a 404 response.
- * Real version:
- *   export async function fetchLeadById(id) {
- *     return apiClient.get(`/leads/${id}`) // apiClient throws on non-2xx already
- *   }
- */
+export async function fetchLeads() {
+  const data = await apiClient.get("/leads/");
+  return data.map(mapLead);
+}
+
 export async function fetchLeadById(id) {
-  await delay(350)
-  const lead = mockLeads.find((l) => String(l.id) === String(id))
-  if (!lead) {
-    throw new Error(`Lead "${id}" not found`)
-  }
-  return lead
+  const data = await apiClient.get(`/leads/${id}`);
+  return mapLead(data);
 }
