@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-
-from app.database import get_db
-from app import models, schemas
-=======
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
->>>>>>> 0a08b43 (Update backend code)
 from app.services import ai_service
 
 router = APIRouter(prefix="/leads", tags=["2. Lead Intelligence"])
@@ -21,10 +12,6 @@ router = APIRouter(prefix="/leads", tags=["2. Lead Intelligence"])
 
 @router.post("/{lead_id}/analyze", response_model=schemas.CompanyInsightOut)
 def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """Runs AI-powered company analysis for one lead and saves the insight."""
-=======
->>>>>>> 0a08b43 (Update backend code)
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -45,10 +32,6 @@ def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{lead_id}/insights", response_model=List[schemas.CompanyInsightOut])
 def get_insights(lead_id: int, db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """Get all previously generated insights for a lead (most recent first)."""
-=======
->>>>>>> 0a08b43 (Update backend code)
     insights = (
         db.query(models.CompanyInsight)
         .filter(models.CompanyInsight.lead_id == lead_id)

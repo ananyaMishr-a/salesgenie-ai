@@ -1,17 +1,8 @@
-<<<<<<< HEAD
-from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import Optional, List
-from datetime import datetime
-
-
-# ---------- Lead ----------
-=======
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
->>>>>>> 0a08b43 (Update backend code)
 
 class LeadCreate(BaseModel):
     company_name: str
@@ -61,11 +52,6 @@ class LeadOut(BaseModel):
     created_at: datetime
 
 
-<<<<<<< HEAD
-# ---------- Company Insight ----------
-
-=======
->>>>>>> 0a08b43 (Update backend code)
 class CompanyInsightOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -77,11 +63,6 @@ class CompanyInsightOut(BaseModel):
     generated_at: datetime
 
 
-<<<<<<< HEAD
-# ---------- Lead Score ----------
-
-=======
->>>>>>> 0a08b43 (Update backend code)
 class LeadScoreOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,11 +75,6 @@ class LeadScoreOut(BaseModel):
     generated_at: datetime
 
 
-<<<<<<< HEAD
-# ---------- Outreach Campaign ----------
-
-=======
->>>>>>> 0a08b43 (Update backend code)
 class OutreachCampaignOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -111,23 +87,12 @@ class OutreachCampaignOut(BaseModel):
 
 
 class OutreachCampaignUpdate(BaseModel):
-<<<<<<< HEAD
-    campaign_status: str  # e.g. "Sent", "Opened", "Replied"
-
-
-# ---------- Sales Interaction (conversation intelligence) ----------
-
-class InteractionCreate(BaseModel):
-    interaction_type: str = "Call"   # Call / Meeting / Email
-    raw_transcript: str              # paste the meeting/call transcript text here
-=======
     campaign_status: str
 
 
 class InteractionCreate(BaseModel):
     interaction_type: str = "Call"
     raw_transcript: str
->>>>>>> 0a08b43 (Update backend code)
 
 
 class InteractionOut(BaseModel):
@@ -141,11 +106,6 @@ class InteractionOut(BaseModel):
     interaction_date: datetime
 
 
-<<<<<<< HEAD
-# ---------- CRM Sync ----------
-
-=======
->>>>>>> 0a08b43 (Update backend code)
 class CRMSyncOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -156,11 +116,6 @@ class CRMSyncOut(BaseModel):
     timestamp: datetime
 
 
-<<<<<<< HEAD
-# ---------- Dashboard ----------
-
-=======
->>>>>>> 0a08b43 (Update backend code)
 class DashboardOverview(BaseModel):
     total_leads: int
     conversion_rate: float

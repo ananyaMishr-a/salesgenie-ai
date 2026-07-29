@@ -1,12 +1,4 @@
 import json
-<<<<<<< HEAD
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-
-from app.database import get_db
-from app import models, schemas
-=======
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
->>>>>>> 0a08b43 (Update backend code)
 from app.services import ai_service
 
 router = APIRouter(tags=["5. Conversation Intelligence & CRM"])
@@ -22,13 +13,6 @@ router = APIRouter(tags=["5. Conversation Intelligence & CRM"])
 
 @router.post("/leads/{lead_id}/conversations", response_model=schemas.InteractionOut)
 def add_conversation(lead_id: int, payload: schemas.InteractionCreate, db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """
-    Submit a raw call/meeting transcript. The AI service summarizes it
-    and extracts action items automatically.
-    """
-=======
->>>>>>> 0a08b43 (Update backend code)
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -61,10 +45,6 @@ def get_conversations(lead_id: int, db: Session = Depends(get_db)):
 
 @router.post("/leads/{lead_id}/crm-sync", response_model=schemas.CRMSyncOut)
 def crm_sync(lead_id: int, crm_platform: str = "Salesforce", db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """Simulate pushing this lead's latest data to a CRM platform."""
-=======
->>>>>>> 0a08b43 (Update backend code)
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")

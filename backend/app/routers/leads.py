@@ -1,13 +1,5 @@
 import csv
 import io
-<<<<<<< HEAD
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.orm import Session
-from typing import List
-
-from app.database import get_db
-from app import models, schemas
-=======
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -15,17 +7,12 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
->>>>>>> 0a08b43 (Update backend code)
 
 router = APIRouter(prefix="/leads", tags=["1. Lead Management"])
 
 
 @router.post("/", response_model=schemas.LeadOut)
 def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """Add a single new prospect/lead."""
-=======
->>>>>>> 0a08b43 (Update backend code)
     new_lead = models.Lead(**lead.model_dump())
     db.add(new_lead)
     db.commit()
@@ -35,10 +22,6 @@ def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=List[schemas.LeadOut])
 def list_leads(status: str = None, industry: str = None, db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """List all leads. Optionally filter by status or industry."""
-=======
->>>>>>> 0a08b43 (Update backend code)
     query = db.query(models.Lead)
     if status:
         query = query.filter(models.Lead.lead_status == status)
@@ -79,14 +62,6 @@ def delete_lead(lead_id: int, db: Session = Depends(get_db)):
 
 @router.post("/import-csv")
 async def import_leads_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """
-    Bulk-import leads from a CSV file.
-    Expected columns (header row): company_name, industry, contact_name, email,
-    phone, company_size, annual_revenue, location, funding_stage, technology_stack
-    """
-=======
->>>>>>> 0a08b43 (Update backend code)
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file")
 
@@ -97,11 +72,7 @@ async def import_leads_csv(file: UploadFile = File(...), db: Session = Depends(g
     created_count = 0
     for row in reader:
         if not row.get("company_name"):
-<<<<<<< HEAD
-            continue  # skip rows without a company name
-=======
             continue
->>>>>>> 0a08b43 (Update backend code)
         lead = models.Lead(
             company_name=row.get("company_name"),
             industry=row.get("industry"),

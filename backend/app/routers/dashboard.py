@@ -1,17 +1,9 @@
 from fastapi import APIRouter, Depends
-<<<<<<< HEAD
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-
-from app.database import get_db
-from app import models, schemas
-=======
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
->>>>>>> 0a08b43 (Update backend code)
 
 router = APIRouter(prefix="/dashboard", tags=["6. Dashboard & Analytics"])
 
@@ -25,10 +17,6 @@ def get_overview(db: Session = Depends(get_db)):
 
     pipeline_value = db.query(func.coalesce(func.sum(models.Lead.deal_value), 0.0)).scalar()
 
-<<<<<<< HEAD
-    # count leads grouped by status, e.g. {"New": 5, "Qualified": 3, ...}
-=======
->>>>>>> 0a08b43 (Update backend code)
     status_counts = (
         db.query(models.Lead.lead_status, func.count(models.Lead.lead_id))
         .group_by(models.Lead.lead_status)
@@ -50,14 +38,6 @@ def get_overview(db: Session = Depends(get_db)):
 
 @router.get("/pipeline")
 def get_pipeline(db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """
-    Kanban-style pipeline view: leads grouped by stage, each with
-    company name and deal value - matches the "Sales Pipeline" board
-    shown in the project's dashboard mockup.
-    """
-=======
->>>>>>> 0a08b43 (Update backend code)
     stages = ["New", "Qualified", "Proposal", "Negotiation", "Closed Won", "Closed Lost"]
     pipeline = {}
     for stage in stages:
@@ -71,10 +51,6 @@ def get_pipeline(db: Session = Depends(get_db)):
 
 @router.get("/top-leads")
 def get_top_leads(limit: int = 5, db: Session = Depends(get_db)):
-<<<<<<< HEAD
-    """Top N leads ranked by their latest lead score (highest conversion probability first)."""
-=======
->>>>>>> 0a08b43 (Update backend code)
     results = (
         db.query(models.Lead, models.LeadScore)
         .join(models.LeadScore, models.Lead.lead_id == models.LeadScore.lead_id)
