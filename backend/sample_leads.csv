@@ -1,0 +1,5 @@
+company_name,industry,contact_name,email,phone,company_size,annual_revenue,location,funding_stage,technology_stack
+TechCorp Solutions,Enterprise Software,Sarah Johnson,sarah.johnson@techcorp.com,9990001111,250-500 employees,$45M - $60M,San Francisco CA,Series C,"AWS,Python,React,Node.js,Kubernetes,PostgreSQL"
+InnovateAI Labs,AI/ML,Mark Chen,mark.chen@innovateai.com,9990002222,50-100 employees,$8M - $12M,Austin TX,Series A,"AWS,Python,TensorFlow"
+DataFlow Systems,Data Infrastructure,Emily Davis,emily.davis@dataflow.io,9990003333,10-50 employees,$1M - $3M,Seattle WA,Seed,"GCP,Python,Kafka"
+CloudScale Inc,Cloud Services,Robert Lee,robert.lee@cloudscale.com,9990004444,1000+ employees,$200M+,New York NY,Public,"Azure,Java,Kubernetes,PostgreSQL"
