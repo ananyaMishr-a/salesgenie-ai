@@ -3,12 +3,14 @@ import AppLayout from './components/layout/AppLayout.jsx'
 import LeadsPage from './pages/LeadsPage.jsx'
 import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import SignupPage from './pages/SignupPage.jsx'
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
 
       <Route
         path="/"

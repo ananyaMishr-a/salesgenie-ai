@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginRequest } from '../api/authApi.js'
+import { loginRequest, registerRequest } from '../api/authApi.js'
 
 const AuthContext = createContext(null)
 const SESSION_KEY = 'salesgenie_session'
@@ -33,13 +33,24 @@ export function AuthProvider({ children }) {
     return sessionUser
   }
 
+  async function signup({ name, email, password }) {
+    // Registers and logs in — throws on failure (e.g. email already taken)
+    const sessionUser = await registerRequest({ name, email, password })
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser))
+    setUser(sessionUser)
+    return sessionUser
+  }
+
   function logout() {
     localStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem('salesgenie_token')
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: Boolean(user), login, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, isAuthenticated: Boolean(user), login, signup, logout }}
+    >
       {children}
     </AuthContext.Provider>
   )
