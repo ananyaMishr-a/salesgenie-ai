@@ -1,19 +1,28 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { LoaderCircle, AlertCircle } from 'lucide-react'
 import MilestoneBanner from '../components/layout/MilestoneBanner.jsx'
 import LeadListPanel from '../components/leads/LeadListPanel.jsx'
 import LeadDetailPanel from '../components/leads/LeadDetailPanel.jsx'
 import LeadIntelligencePanel from '../components/leads/LeadIntelligencePanel.jsx'
+import LeadFormModal from '../components/leads/LeadFormModal.jsx'
 import { useLeads } from '../hooks/useLeads.js'
 import { useLead } from '../hooks/useLead.js'
+import { createLead, updateLead } from '../api/leadsApi.js'
 
 export default function LeadsPage() {
   const { leadId } = useParams()
   const navigate = useNavigate()
 
-  const { leads, isLoading: isLoadingLeads, error: leadsError } = useLeads()
-  const { lead: selectedLead, isLoading: isLoadingLead, error: leadError } = useLead(leadId)
+  const { leads, isLoading: isLoadingLeads, error: leadsError, refetch: refetchLeads } = useLeads()
+  const {
+    lead: selectedLead,
+    isLoading: isLoadingLead,
+    error: leadError,
+    refetch: refetchLead,
+  } = useLead(leadId)
+
+  const [modalMode, setModalMode] = useState(null) // null | 'create' | 'edit'
 
   // Default to the first lead so the detail view is never empty on load
   useEffect(() => {
@@ -24,6 +33,18 @@ export default function LeadsPage() {
 
   function handleSelectLead(id) {
     navigate(`/leads/${id}`)
+  }
+
+  async function handleSaveLead(values) {
+    if (modalMode === 'edit' && selectedLead) {
+      const updated = await updateLead(selectedLead.id, values)
+      await Promise.all([refetchLeads(), refetchLead()])
+      return updated
+    }
+    const created = await createLead(values)
+    await refetchLeads()
+    navigate(`/leads/${created.id}`)
+    return created
   }
 
   return (
@@ -53,6 +74,13 @@ export default function LeadsPage() {
             <p className="mt-1 text-sm text-ink-muted">
               Add your first lead to see company analysis and AI intelligence here.
             </p>
+            <button
+              type="button"
+              onClick={() => setModalMode('create')}
+              className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+            >
+              Add lead
+            </button>
           </div>
         </div>
       ) : (
@@ -62,6 +90,7 @@ export default function LeadsPage() {
               leads={leads}
               selectedLeadId={selectedLead?.id}
               onSelectLead={handleSelectLead}
+              onAddLead={() => setModalMode('create')}
             />
           </div>
 
@@ -78,7 +107,7 @@ export default function LeadsPage() {
           ) : (
             <>
               <div className="h-[calc(100vh-220px)]">
-                <LeadDetailPanel lead={selectedLead} />
+                <LeadDetailPanel lead={selectedLead} onEdit={() => setModalMode('edit')} />
               </div>
               <div className="h-[calc(100vh-220px)]">
                 <LeadIntelligencePanel lead={selectedLead} />
@@ -86,6 +115,15 @@ export default function LeadsPage() {
             </>
           )}
         </div>
+      )}
+
+      {modalMode && (
+        <LeadFormModal
+          mode={modalMode}
+          lead={modalMode === 'edit' ? selectedLead : null}
+          onClose={() => setModalMode(null)}
+          onSave={handleSaveLead}
+        />
       )}
     </div>
   )

@@ -10,6 +10,14 @@ const client = axios.create({
   },
 });
 
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem("salesgenie_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const apiClient = {
   get: async (path) => (await client.get(path)).data,
   post: async (path, body) => (await client.post(path, body)).data,

@@ -4,6 +4,18 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    email: str
+    name: str
+    role: str
+    token: str
+
+
 class LeadCreate(BaseModel):
     company_name: str
     industry: Optional[str] = None

@@ -1,44 +1,40 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { fetchLeadById } from '../api/leadsApi.js'
 
 /**
  * Loads a single lead's detail whenever `id` changes.
- * Returns { lead, isLoading, error }.
+ * Returns { lead, isLoading, error, refetch }.
  */
 export function useLead(id) {
   const [lead, setLead] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const requestId = useRef(0)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) {
       setLead(null)
       return
     }
-
-    let cancelled = false
-
-    async function load() {
-      setIsLoading(true)
-      setError('')
-      try {
-        const data = await fetchLeadById(id)
-        if (!cancelled) setLead(data)
-      } catch (err) {
-        if (!cancelled) {
-          setError(err.message)
-          setLead(null)
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false)
+    const thisRequest = ++requestId.current
+    setIsLoading(true)
+    setError('')
+    try {
+      const data = await fetchLeadById(id)
+      if (thisRequest === requestId.current) setLead(data)
+    } catch (err) {
+      if (thisRequest === requestId.current) {
+        setError(err.message)
+        setLead(null)
       }
-    }
-
-    load()
-    return () => {
-      cancelled = true
+    } finally {
+      if (thisRequest === requestId.current) setIsLoading(false)
     }
   }, [id])
 
-  return { lead, isLoading, error }
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { lead, isLoading, error, refetch: load }
 }

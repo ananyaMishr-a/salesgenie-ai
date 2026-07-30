@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, Sparkles, LoaderCircle, AlertCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import BrandPanel from '../components/auth/BrandPanel.jsx'
@@ -8,37 +8,45 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-export default function LoginPage() {
-  const { login } = useAuth()
+export default function SignupPage() {
+  const { signup } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const redirectTo = location.state?.from?.pathname ?? '/leads'
 
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(true)
   const [touched, setTouched] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
 
+  const nameError = touched.name && !name.trim() ? 'Enter your name' : ''
   const emailError =
-    touched.email && !email ? 'Enter your email' : touched.email && !isValidEmail(email) ? 'Enter a valid email address' : ''
-  const passwordError = touched.password && !password ? 'Enter your password' : ''
+    touched.email && !email
+      ? 'Enter your email'
+      : touched.email && !isValidEmail(email)
+        ? 'Enter a valid email address'
+        : ''
+  const passwordError =
+    touched.password && !password
+      ? 'Enter a password'
+      : touched.password && password.length < 8
+        ? 'Password must be at least 8 characters'
+        : ''
 
-  const canSubmit = email && password && isValidEmail(email) && !isSubmitting
+  const canSubmit = name.trim() && email && password.length >= 8 && isValidEmail(email) && !isSubmitting
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setTouched({ email: true, password: true })
+    setTouched({ name: true, email: true, password: true })
     setFormError('')
 
-    if (!email || !password || !isValidEmail(email)) return
+    if (!name.trim() || !email || !isValidEmail(email) || password.length < 8) return
 
     setIsSubmitting(true)
     try {
-      await login({ email, password })
-      navigate(redirectTo, { replace: true })
+      await signup({ name, email, password })
+      navigate('/leads', { replace: true })
     } catch (err) {
       setFormError(err.message)
     } finally {
@@ -60,9 +68,9 @@ export default function LoginPage() {
             <span className="text-base font-bold text-ink">SalesGenie AI</span>
           </div>
 
-          <h2 className="text-2xl font-bold text-ink">Welcome back</h2>
+          <h2 className="text-2xl font-bold text-ink">Create your account</h2>
           <p className="mt-1.5 text-sm text-ink-muted">
-            Sign in to pick up where you left off with your pipeline.
+            Start tracking prospects and generating AI-powered outreach.
           </p>
 
           {formError && (
@@ -73,6 +81,25 @@ export default function LoginPage() {
           )}
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+            <div>
+              <label htmlFor="name" className="text-sm font-medium text-ink">
+                Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+                placeholder="Alex Rivera"
+                className={`mt-1.5 w-full rounded-lg border px-3 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/20 ${
+                  nameError ? 'border-red-300' : 'border-surface-border'
+                }`}
+              />
+              {nameError && <p className="mt-1 text-xs text-red-600">{nameError}</p>}
+            </div>
+
             <div>
               <label htmlFor="email" className="text-sm font-medium text-ink">
                 Email
@@ -93,23 +120,18 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium text-ink">
-                  Password
-                </label>
-                <Link to="/login" className="text-xs font-medium text-brand hover:text-brand-dark">
-                  Forgot password?
-                </Link>
-              </div>
+              <label htmlFor="password" className="text-sm font-medium text-ink">
+                Password
+              </label>
               <div className="relative mt-1.5">
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                  placeholder="••••••••"
+                  placeholder="At least 8 characters"
                   className={`w-full rounded-lg border px-3 py-2.5 pr-10 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/20 ${
                     passwordError ? 'border-red-300' : 'border-surface-border'
                   }`}
@@ -126,30 +148,20 @@ export default function LoginPage() {
               {passwordError && <p className="mt-1 text-xs text-red-600">{passwordError}</p>}
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-ink-muted">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-surface-border text-brand focus:ring-brand/30"
-              />
-              Keep me signed in
-            </label>
-
             <button
               type="submit"
               disabled={!canSubmit}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:bg-ink-faint"
             >
               {isSubmitting && <LoaderCircle size={16} className="animate-spin" />}
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {isSubmitting ? 'Creating account…' : 'Create account'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-ink-muted">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-semibold text-brand hover:text-brand-dark">
-              Sign up
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-brand hover:text-brand-dark">
+              Sign in
             </Link>
           </p>
         </div>
