@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout.jsx'
 import LeadsPage from './pages/LeadsPage.jsx'
+import OutreachPage from './pages/OutreachPage.jsx'
 import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
@@ -24,11 +25,7 @@ export default function App() {
         <Route path="leads" element={<LeadsPage />} />
         <Route path="leads/:leadId" element={<LeadsPage />} />
 
-        {/* Built in later milestones — placeholders keep the tab bar functional now */}
-        <Route
-          path="outreach"
-          element={<ComingSoonPage title="Outreach" milestone="Milestone 2 · Weeks 3–4" />}
-        />
+        <Route path="outreach" element={<OutreachPage />} />
         <Route
           path="conversations"
           element={<ComingSoonPage title="Conversations" milestone="Milestone 3 · Weeks 5–6" />}
