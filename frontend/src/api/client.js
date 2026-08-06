@@ -1,26 +1,41 @@
 import axios from "axios";
+import { toast } from "sonner";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 const client = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("salesgenie_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+client.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("salesgenie_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message =
+      error.response?.data?.detail || error.message || "Something went wrong.";
+    toast.error(typeof message === "string" ? message : "An error occurred");
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 export const apiClient = {
-  get: async (path) => (await client.get(path)).data,
-  post: async (path, body) => (await client.post(path, body)).data,
-  put: async (path, body) => (await client.put(path, body)).data,
-  delete: async (path) => (await client.delete(path)).data,
+  get: async (path, config = {}) => (await client.get(path, config)).data,
+  post: async (path, body, config = {}) => (await client.post(path, body, config)).data,
 };
+
+export default client;
