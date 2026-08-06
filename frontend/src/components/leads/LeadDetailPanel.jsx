@@ -10,7 +10,7 @@ function Field({ label, value }) {
   )
 }
 
-export default function LeadDetailPanel({ lead, onEdit }) {
+export default function LeadDetailPanel({ lead, onEdit, onGenerateOutreach }) {
   return (
     <div className="flex h-full flex-col rounded-xl border border-surface-border bg-white p-5 shadow-card">
       <div className="flex items-start justify-between">
@@ -28,7 +28,10 @@ export default function LeadDetailPanel({ lead, onEdit }) {
             <Pencil size={14} />
             Edit
           </button>
-          <button className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">
+          <button 
+            onClick={onGenerateOutreach}
+            className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark"
+          >
             <Send size={14} />
             Outreach
           </button>

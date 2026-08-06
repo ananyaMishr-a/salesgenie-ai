@@ -6,9 +6,11 @@ import LeadListPanel from '../components/leads/LeadListPanel.jsx'
 import LeadDetailPanel from '../components/leads/LeadDetailPanel.jsx'
 import LeadIntelligencePanel from '../components/leads/LeadIntelligencePanel.jsx'
 import LeadFormModal from '../components/leads/LeadFormModal.jsx'
+import OutreachGenerator from '../components/outreach/OutreachGenerator.jsx'
 import { useLeads } from '../hooks/useLeads.js'
 import { useLead } from '../hooks/useLead.js'
-import { createLead, updateLead } from '../api/leadsApi.js'
+import { useOutreach } from '../hooks/useOutreach.js'
+import { createLead, updateLead, runLeadIntelligence } from '../api/leadsApi.js'
 
 export default function LeadsPage() {
   const { leadId } = useParams()
@@ -21,8 +23,11 @@ export default function LeadsPage() {
     error: leadError,
     refetch: refetchLead,
   } = useLead(leadId)
+  
+  const { generateEmail, isLoading: isGeneratingEmail } = useOutreach()
 
   const [modalMode, setModalMode] = useState(null) // null | 'create' | 'edit'
+  const [outreachModalLead, setOutreachModalLead] = useState(null)
 
   // Default to the first lead so the detail view is never empty on load
   useEffect(() => {
@@ -45,6 +50,14 @@ export default function LeadsPage() {
     await refetchLeads()
     navigate(`/leads/${created.id}`)
     return created
+  }
+
+  async function handleAnalyzeLead() {
+    // runLeadIntelligence persists the new insight+score to the backend;
+    // refetching brings back the merged shape (hasIntelligence, etc.)
+    // that leadsApi.mapLead/attachIntelligence already know how to build.
+    await runLeadIntelligence(selectedLead.id)
+    await refetchLead()
   }
 
   return (
@@ -107,10 +120,18 @@ export default function LeadsPage() {
           ) : (
             <>
               <div className="h-[calc(100vh-220px)]">
-                <LeadDetailPanel lead={selectedLead} onEdit={() => setModalMode('edit')} />
+                <LeadDetailPanel 
+                  lead={selectedLead} 
+                  onEdit={() => setModalMode('edit')} 
+                  onGenerateOutreach={() => setOutreachModalLead(selectedLead)}
+                />
               </div>
               <div className="h-[calc(100vh-220px)]">
-                <LeadIntelligencePanel lead={selectedLead} />
+                <LeadIntelligencePanel
+                  key={selectedLead.id}
+                  lead={selectedLead}
+                  onAnalyze={handleAnalyzeLead}
+                />
               </div>
             </>
           )}
@@ -123,6 +144,15 @@ export default function LeadsPage() {
           lead={modalMode === 'edit' ? selectedLead : null}
           onClose={() => setModalMode(null)}
           onSave={handleSaveLead}
+        />
+      )}
+
+      {outreachModalLead && (
+        <OutreachGenerator
+          lead={outreachModalLead}
+          onClose={() => setOutreachModalLead(null)}
+          onGenerate={generateEmail}
+          isLoading={isGeneratingEmail}
         />
       )}
     </div>

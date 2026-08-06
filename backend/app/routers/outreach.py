@@ -11,12 +11,12 @@ router = APIRouter(tags=["3. AI Outreach"])
 
 
 @router.post("/leads/{lead_id}/generate-email", response_model=schemas.OutreachCampaignOut)
-def generate_email(lead_id: int, db: Session = Depends(get_db)):
+def generate_email(lead_id: int, req: schemas.OutreachGenerateRequest, db: Session = Depends(get_db)):
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    result = ai_service.generate_outreach_email(lead)
+    result = ai_service.generate_outreach_email(lead, tone=req.tone)
 
     campaign = models.OutreachCampaign(
         lead_id=lead.lead_id,
@@ -55,3 +55,13 @@ def update_campaign_status(campaign_id: int, update: schemas.OutreachCampaignUpd
     db.commit()
     db.refresh(campaign)
     return campaign
+
+
+@router.get("/leads/{lead_id}/strategy")
+def get_outreach_strategy(lead_id: int, db: Session = Depends(get_db)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    strategy = ai_service.generate_outreach_strategy(lead)
+    return strategy

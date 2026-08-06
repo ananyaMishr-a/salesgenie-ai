@@ -11,9 +11,21 @@ This is the function Aditi (Backend Lead) will call from FastAPI:
 import os
 import json
 from dotenv import load_dotenv
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+import sys
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 import google.generativeai as genai
 
-from schemas import CompanyResearchInput, CompanyInsights
+try:
+    from ai.schemas import CompanyResearchInput, CompanyInsights
+except ImportError:
+    from schemas import CompanyResearchInput, CompanyInsights
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -46,7 +58,7 @@ Return ONLY the JSON object, nothing else.
 def _call_gemini(company_name: str, domain: str | None) -> dict:
     """
     Attempts the real Gemini call and returns a parsed dict.
-    Raises an exception on ANY failure (network, quota, bad JSON) —
+    Raises an exception on ANY failure (network, quota, bad JSON) --
     the caller decides what to do about it.
     """
     prompt = PROMPT_TEMPLATE.format(
@@ -57,7 +69,7 @@ def _call_gemini(company_name: str, domain: str | None) -> dict:
     response = model.generate_content(prompt)
     raw_text = response.text.strip()
 
-    # Gemini sometimes wraps JSON in ```json ... ``` — strip that off if present
+    # Gemini sometimes wraps JSON in ```json ... ``` -- strip that off if present
     if raw_text.startswith("```"):
         raw_text = raw_text.strip("`")
         raw_text = raw_text.replace("json\n", "", 1).replace("json", "", 1)
@@ -69,7 +81,7 @@ def _fallback_insights(company_name: str, domain: str | None) -> dict:
     """
     Rule-based backup used ONLY if the real Gemini call fails
     (quota exceeded, network error, bad output, etc.).
-    This keeps the app usable even when the AI is temporarily unavailable —
+    This keeps the app usable even when the AI is temporarily unavailable --
     same idea as the fallback pattern in Aditi's ai_service.py.
     """
     return {
@@ -79,7 +91,7 @@ def _fallback_insights(company_name: str, domain: str | None) -> dict:
         "funding_stage": "Not available",
         "growth_signals": [
             f"Could not reach Gemini for a live analysis of {company_name}. "
-            "This is a placeholder result — retry once the API is available."
+            "This is a placeholder result -- retry once the API is available."
         ],
         "qualification_score": 50,  # neutral default, not a real judgement
         "reasoning": (
@@ -96,10 +108,10 @@ def analyze_company(company_name: str, domain: str | None = None) -> CompanyInsi
 
     Tries the real Gemini call first. If that fails for ANY reason
     (quota limit, network issue, malformed response), falls back to a
-    clearly-labeled placeholder instead of crashing — so the rest of the
+    clearly-labeled placeholder instead of crashing -- so the rest of the
     app (backend/frontend) never breaks just because the AI call failed.
 
-    Every path — success or fallback — is validated through the same
+    Every path -- success or fallback -- is validated through the same
     Pydantic schema, so callers always get a guaranteed, correct shape.
     """
     input_data = CompanyResearchInput(company_name=company_name, domain=domain)
@@ -107,7 +119,7 @@ def analyze_company(company_name: str, domain: str | None = None) -> CompanyInsi
     try:
         data = _call_gemini(input_data.company_name, input_data.domain)
     except Exception as e:
-        print(f"⚠️  Gemini call failed ({type(e).__name__}: {e}). Using fallback insights.")
+        print(f"WARNING: Gemini call failed ({type(e).__name__}: {e}). Using fallback insights.")
         data = _fallback_insights(input_data.company_name, input_data.domain)
 
     # Validate against our schema — this guarantees the shape Aditi's backend expects,
@@ -117,7 +129,7 @@ def analyze_company(company_name: str, domain: str | None = None) -> CompanyInsi
 
 
 if __name__ == "__main__":
-    # Quick manual test — run this file directly to try it out
+    # Quick manual test -- run this file directly to try it out
     test_company = "Notion"
     print(f"Analyzing: {test_company}...\n")
 

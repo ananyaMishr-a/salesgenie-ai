@@ -24,8 +24,8 @@ export default function App() {
         <Route index element={<Navigate to="/leads" replace />} />
         <Route path="leads" element={<LeadsPage />} />
         <Route path="leads/:leadId" element={<LeadsPage />} />
-
         <Route path="outreach" element={<OutreachPage />} />
+         
         <Route
           path="conversations"
           element={<ComingSoonPage title="Conversations" milestone="Milestone 3 · Weeks 5–6" />}

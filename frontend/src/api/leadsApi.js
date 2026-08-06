@@ -19,8 +19,44 @@ function mapLead(lead) {
       : [],
     segment: lead.lead_status,
     lastActivity: new Date(lead.created_at).toLocaleDateString(),
-    qualificationScore: 75, // Placeholder until backend provides a score
-    insights: [] // Placeholder until backend provides insights
+    // see attachIntelligence() below. These stay as safe defaults until
+    // real data (or a user-triggered analysis) is available.
+    qualificationScore: lead.qualification_score || 0,
+    insights: [],
+    hasIntelligence: false, // lets the UI show "Run AI Analysis" vs the real panel
+  };
+}
+
+// Turns one CompanyInsightOut record into the {label, detail} shape
+// LeadIntelligencePanel already expects.
+function mapInsightRecord(insight) {
+  if (!insight) return [];
+  return [
+    { label: "Business Needs", detail: insight.business_needs },
+    { label: "Opportunities", detail: insight.opportunities },
+    { label: "Industry Analysis", detail: insight.industry_analysis },
+  ];
+}
+
+// Merges the latest insight + score records (if any exist) onto a mapped lead.
+function attachIntelligence(lead, insightRecord, scoreRecord) {
+  let scoringFactors = {}
+  if (scoreRecord && scoreRecord.scoring_factors) {
+    try {
+      scoringFactors = JSON.parse(scoreRecord.scoring_factors)
+    } catch (e) {
+      console.error("Failed to parse scoring factors")
+    }
+  }
+
+  return {
+    ...lead,
+    qualificationScore: scoreRecord ? scoreRecord.lead_score : 0,
+    conversionProbability: scoreRecord ? scoreRecord.conversion_probability : 0,
+    priorityLevel: scoreRecord ? scoreRecord.priority_level : 'Low',
+    scoringFactors,
+    insights: mapInsightRecord(insightRecord),
+    hasIntelligence: Boolean(insightRecord || scoreRecord),
   };
 }
 
@@ -57,9 +93,53 @@ export async function fetchLeads() {
   return data.map(mapLead);
 }
 
+// Fetches a lead AND its most recent AI insight/score, if any were
+// already generated earlier. Safe to call every time the detail page
+// opens — these are GET requests, they don't trigger new AI calls.
 export async function fetchLeadById(id) {
-  const data = await apiClient.get(`/leads/${id}`);
-  return mapLead(data);
+  const [leadData, insights, scores] = await Promise.all([
+    apiClient.get(`/leads/${id}`),
+    apiClient.get(`/leads/${id}/insights`).catch(() => []),
+    apiClient.get(`/leads/${id}/scores`).catch(() => []),
+  ]);
+
+  const lead = mapLead(leadData);
+  const latestInsight = insights?.[0] ?? null; // endpoint returns newest first
+  const latestScore = scores?.[0] ?? null;
+
+  return attachIntelligence(lead, latestInsight, latestScore);
+}
+
+// Triggers a FRESH AI analysis + scoring run for this lead (two POSTs,
+// in parallel) and returns the fields needed to update the UI.
+// Wire this to an "Analyze with AI" button — don't call it automatically
+// on every page load, since each call is a real Gemini/LLM request.
+export async function runLeadIntelligence(id) {
+  try {
+    const [insight, score] = await Promise.all([
+      apiClient.post(`/leads/${id}/analyze`),
+      apiClient.post(`/leads/${id}/score`),
+    ]);
+    let scoringFactors = {}
+    if (score && score.scoring_factors) {
+      try {
+        scoringFactors = JSON.parse(score.scoring_factors)
+      } catch (e) {
+        console.error("Failed to parse scoring factors")
+      }
+    }
+
+    return {
+      qualificationScore: score.lead_score,
+      conversionProbability: score.conversion_probability,
+      priorityLevel: score.priority_level,
+      scoringFactors,
+      insights: mapInsightRecord(insight),
+      hasIntelligence: true,
+    };
+  } catch (err) {
+    throw new Error(toDisplayMessage(err, "Couldn't run AI analysis for this lead. Please try again."));
+  }
 }
 
 export async function createLead(values) {
@@ -77,5 +157,14 @@ export async function updateLead(id, values) {
     return mapLead(data);
   } catch (err) {
     throw new Error(toDisplayMessage(err, "Couldn't save these changes. Please try again."));
+  }
+}
+
+export async function enrichCompanyData(companyName) {
+  try {
+    const data = await apiClient.post("/leads/enrich", { company_name: companyName });
+    return data;
+  } catch (err) {
+    throw new Error(toDisplayMessage(err, "Couldn't enrich company data. Please try again."));
   }
 }

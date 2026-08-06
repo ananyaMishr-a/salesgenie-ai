@@ -42,6 +42,12 @@ class Lead(Base):
     interactions = relationship("SalesInteraction", back_populates="lead", cascade="all, delete-orphan")
     crm_logs = relationship("CRMSyncLog", back_populates="lead", cascade="all, delete-orphan")
 
+    @property
+    def qualification_score(self):
+        if self.scores:
+            return sorted(self.scores, key=lambda s: s.generated_at, reverse=True)[0].lead_score
+        return 0
+
 
 class CompanyInsight(Base):
     __tablename__ = "company_insights"

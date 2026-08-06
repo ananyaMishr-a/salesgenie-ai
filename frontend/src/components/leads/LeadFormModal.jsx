@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { LoaderCircle, AlertCircle } from 'lucide-react'
+import { LoaderCircle, AlertCircle, Sparkles } from 'lucide-react'
 import Modal from '../ui/Modal.jsx'
+import { enrichCompanyData } from '../../api/leadsApi'
 
 const STATUS_OPTIONS = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']
 
@@ -44,6 +45,7 @@ export default function LeadFormModal({ mode, lead, onClose, onSave }) {
   const [values, setValues] = useState(() => fieldsFromLead(lead))
   const [touched, setTouched] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isEnriching, setIsEnriching] = useState(false)
   const [formError, setFormError] = useState('')
 
   const companyError = touched && !values.company.trim() ? 'Company name is required' : ''
@@ -71,6 +73,31 @@ export default function LeadFormModal({ mode, lead, onClose, onSave }) {
     }
   }
 
+  async function handleEnrich() {
+    if (!values.company.trim()) {
+      setFormError('Please enter a company name to enrich data.')
+      return
+    }
+    
+    setIsEnriching(true)
+    setFormError('')
+    
+    try {
+      const data = await enrichCompanyData(values.company)
+      setValues(prev => ({
+        ...prev,
+        industry: data.industry !== 'Unknown (AI analysis unavailable)' ? data.industry : prev.industry,
+        companySize: data.company_size !== 'Not available' ? data.company_size : prev.companySize,
+        fundingStage: data.funding_stage !== 'Not available' ? data.funding_stage : prev.fundingStage,
+        techStack: data.tech_stack.length > 0 ? data.tech_stack.join(', ') : prev.techStack
+      }))
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setIsEnriching(false)
+    }
+  }
+
   return (
     <Modal title={mode === 'edit' ? 'Edit lead' : 'Add lead'} onClose={onClose}>
       {formError && (
@@ -82,16 +109,27 @@ export default function LeadFormModal({ mode, lead, onClose, onSave }) {
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="space-y-4">
-          <div>
-            <Input
-              label="Company name *"
-              value={values.company}
-              onChange={(e) => update('company', e.target.value)}
-              onBlur={() => setTouched(true)}
-              placeholder="Acme Corp"
-            />
-            {companyError && <p className="mt-1 text-xs text-red-600">{companyError}</p>}
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <Input
+                label="Company name *"
+                value={values.company}
+                onChange={(e) => update('company', e.target.value)}
+                onBlur={() => setTouched(true)}
+                placeholder="Acme Corp"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleEnrich}
+              disabled={!values.company.trim() || isEnriching}
+              className="mb-[1px] flex h-[38px] items-center gap-1.5 rounded-lg border border-brand bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10 disabled:opacity-50 transition-colors"
+            >
+              {isEnriching ? <LoaderCircle size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              Auto-fill
+            </button>
           </div>
+          {companyError && <p className="mt-[-8px] text-xs text-red-600">{companyError}</p>}
 
           <div className="grid grid-cols-2 gap-3">
             <Input
