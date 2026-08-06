@@ -1,5 +1,7 @@
 import csv
 import io
+import sys
+import os
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -90,3 +92,24 @@ async def import_leads_csv(file: UploadFile = File(...), db: Session = Depends(g
 
     db.commit()
     return {"message": f"Imported {created_count} leads successfully"}
+
+
+@router.post("/enrich", response_model=schemas.CompanyEnrichResponse)
+def enrich_lead_data(req: schemas.CompanyEnrichRequest):
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+    from ai.company_research_agent import analyze_company
+    
+    # We will pass the company_name to the standalone AI agent
+    try:
+        insights = analyze_company(req.company_name)
+        return {
+            "industry": insights.industry,
+            "company_size": insights.company_size,
+            "tech_stack": insights.tech_stack,
+            "funding_stage": insights.funding_stage,
+            "growth_signals": insights.growth_signals,
+            "qualification_score": insights.qualification_score,
+            "reasoning": insights.reasoning
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

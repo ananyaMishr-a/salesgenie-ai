@@ -1,5 +1,14 @@
 import json
 import os
+import sys
+
+# Add the root directory to Python path so we can import the standalone 'ai' folder
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+
+try:
+    from ai.company_research_agent import analyze_company
+except ImportError:
+    pass
 
 from dotenv import load_dotenv
 
@@ -171,9 +180,9 @@ def calculate_lead_score(lead) -> dict:
     }
 
 
-def generate_outreach_email(lead) -> dict:
+def generate_outreach_email(lead, tone: str = "Professional") -> dict:
     prompt = (
-        "Write a short, personalized, friendly B2B cold outreach email "
+        f"Write a short, personalized, {tone.lower()}, B2B cold outreach email "
         "(max 120 words) to a prospect. Return JSON with keys \"subject\" and \"content\".\n\n"
         f"Prospect company: {lead.company_name}\n"
         f"Contact name: {lead.contact_name or 'there'}\n"
@@ -192,8 +201,18 @@ def generate_outreach_email(lead) -> dict:
 
     contact = lead.contact_name or "there"
     subject = f"Helping {lead.company_name} move faster with AI"
+    
+    tone_greeting = "Hi"
+    tone_signoff = "Best regards"
+    if tone.lower() == "casual":
+        tone_greeting = "Hey"
+        tone_signoff = "Cheers"
+    elif tone.lower() == "direct":
+        tone_greeting = "Hi"
+        tone_signoff = "Thanks"
+
     content = (
-        f"Hi {contact},\n\n"
+        f"{tone_greeting} {contact},\n\n"
         f"I noticed {lead.company_name} is doing great work in {lead.industry or 'your industry'}"
         f"{', especially at the ' + lead.funding_stage + ' stage' if lead.funding_stage else ''}. "
         f"Teams like yours often struggle with manual, repetitive sales and ops work that slows "
@@ -202,7 +221,7 @@ def generate_outreach_email(lead) -> dict:
         f"follow-ups - so your team can focus on closing deals instead of busywork.\n\n"
         f"Would you be open to a quick 15-minute call this week to see if it's a fit for "
         f"{lead.company_name}?\n\n"
-        f"Best regards,\nSales Team"
+        f"{tone_signoff},\nSales Team"
     )
     return {"subject": subject, "content": content}
 
@@ -239,3 +258,43 @@ def summarize_conversation(transcript: str) -> dict:
         action_items = ["Follow up with the prospect within 48 hours."]
 
     return {"summary": summary, "action_items": action_items[:5]}
+
+def generate_outreach_strategy(lead) -> dict:
+    prompt = (
+        "Analyze this B2B sales prospect and return a JSON object containing an outreach strategy. "
+        "The JSON MUST have exactly these three keys: \"follow_up_timing\", \"channel_mix\", and \"content_strategy\". "
+        "Each key must map to an object with three string fields: \"priority\" (High, Medium, or Low), "
+        "\"description\" (2-3 sentences of strategy), and \"footer_text\" (a short 2-5 word summary like 'Optimal: Tuesday 10:00 AM' or 'Multi-channel approach').\n\n"
+        f"Company: {lead.company_name}\n"
+        f"Industry: {lead.industry}\n"
+        f"Company size: {lead.company_size}\n"
+        f"Funding stage: {lead.funding_stage}\n"
+        f"Technology stack: {lead.technology_stack}\n"
+    )
+    llm_output = _call_llm(prompt)
+    if llm_output:
+        try:
+            data = json.loads(llm_output)
+            if "follow_up_timing" in data and "channel_mix" in data and "content_strategy" in data:
+                return data
+        except Exception:
+            pass
+
+    # Fallback response
+    return {
+        "follow_up_timing": {
+            "priority": "High",
+            "description": f"Send follow-up within 48 hours of initial email. Tuesday mornings show highest response rates for {lead.industry or 'tech'} executives.",
+            "footer_text": "Optimal: Tuesday 10:00 AM"
+        },
+        "channel_mix": {
+            "priority": "Medium",
+            "description": f"After email, connect on LinkedIn within 24 hours. Reference specific {lead.company_name} achievements in connection note.",
+            "footer_text": "Multi-channel approach"
+        },
+        "content_strategy": {
+            "priority": "Medium",
+            "description": "Share relevant case study on similar-sized company success. Focus on ROI metrics that align with growth stage priorities.",
+            "footer_text": "Value-first approach"
+        }
+    }

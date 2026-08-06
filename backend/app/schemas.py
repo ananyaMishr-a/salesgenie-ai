@@ -62,6 +62,7 @@ class LeadOut(BaseModel):
     lead_status: str
     deal_value: float
     created_at: datetime
+    qualification_score: int = 0
 
 
 class CompanyInsightOut(BaseModel):
@@ -102,6 +103,10 @@ class OutreachCampaignUpdate(BaseModel):
     campaign_status: str
 
 
+class OutreachGenerateRequest(BaseModel):
+    tone: str = "Professional"
+
+
 class InteractionCreate(BaseModel):
     interaction_type: str = "Call"
     raw_transcript: str
@@ -134,3 +139,17 @@ class DashboardOverview(BaseModel):
     pipeline_value: float
     leads_by_status: dict
     avg_lead_score: float
+
+
+class CompanyEnrichRequest(BaseModel):
+    company_name: str
+
+
+class CompanyEnrichResponse(BaseModel):
+    industry: str
+    company_size: str
+    tech_stack: list[str]
+    funding_stage: str
+    growth_signals: list[str]
+    qualification_score: int
+    reasoning: str
