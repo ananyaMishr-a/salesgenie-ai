@@ -36,6 +36,7 @@ client.interceptors.response.use(
 export const apiClient = {
   get: async (path, config = {}) => (await client.get(path, config)).data,
   post: async (path, body, config = {}) => (await client.post(path, body, config)).data,
+put: async (path, body, config = {}) => (await client.put(path, body, config)).data,
 };
 
 export default client;
