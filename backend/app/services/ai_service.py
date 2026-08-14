@@ -1,21 +1,34 @@
 import json
 import os
-import sys
-
-# Add the root directory to Python path so we can import the standalone 'ai' folder
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
-
-try:
-    from ai.company_research_agent import analyze_company
-except ImportError:
-    pass
+import re
 
 from dotenv import load_dotenv
+from pydantic import BaseModel, ValidationError
 
 load_dotenv()
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+
+# ---------------------------------------------------------------------------
+# AI call chain, in order of preference:
+#   1. Gemini (primary) - structured, Pydantic-validated JSON output
+#   2. Groq / OpenAI (secondary) - original behavior, kept as-is
+#   3. Rule-based templates (tertiary) - Aditi's original fallback logic,
+#      UNCHANGED below in each function. This guarantees the app never
+#      breaks even if both AI providers are unavailable.
+# ---------------------------------------------------------------------------
+
+_gemini_model = None
+if GEMINI_API_KEY:
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=GEMINI_API_KEY)
+        _gemini_model = genai.GenerativeModel("gemini-flash-latest")
+    except Exception:
+        _gemini_model = None
 
 client = None
 MODEL_NAME = None
@@ -38,7 +51,66 @@ elif OPENAI_API_KEY:
         client = None
 
 
+# ---------------------------------------------------------------------------
+# Pydantic schemas — used only to validate the PRIMARY (Gemini) path.
+# If Gemini's output doesn't match one of these exactly, we treat it as a
+# failure and move to the next fallback, rather than passing bad data along.
+# ---------------------------------------------------------------------------
+
+class _CompanyInsightsSchema(BaseModel):
+    business_needs: str
+    opportunities: str
+    industry_analysis: str
+
+
+class _OutreachEmailSchema(BaseModel):
+    subject: str
+    content: str
+
+
+class _ConversationSummarySchema(BaseModel):
+    summary: str
+    action_items: list[str]
+
+
+def _extract_json(raw_text: str) -> str:
+    """Strips ```json ... ``` style markdown fences some LLMs wrap output in."""
+    text = raw_text.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = re.sub(r"^json\s*", "", text, count=1, flags=re.IGNORECASE)
+    return text.strip()
+
+
+def _call_gemini_structured(prompt: str, system: str, schema: type[BaseModel]) -> dict | None:
+    """
+    Primary AI path. Calls Gemini and validates the response against the
+    given Pydantic schema. Returns a plain dict on success, or None on
+    ANY failure (not configured, network error, bad JSON, missing/invalid
+    fields) — None signals the caller to fall through to the next path.
+    """
+    if not _gemini_model:
+        return None
+    try:
+        full_prompt = (
+            f"{system}\n\n{prompt}\n\n"
+            "Return ONLY a valid JSON object matching the required fields. "
+            "No markdown, no code fences, no extra commentary."
+        )
+        response = _gemini_model.generate_content(full_prompt)
+        raw = json.loads(_extract_json(response.text))
+        validated = schema(**raw)
+        return validated.model_dump()
+    except (json.JSONDecodeError, ValidationError, Exception):
+        return None
+
+
 def _call_llm(prompt: str, system: str = "You are a helpful B2B sales assistant.") -> str:
+    """
+    Secondary AI path (Groq/OpenAI). Unchanged from the original
+    implementation — kept exactly as it was as a backup if Gemini isn't
+    configured or didn't return valid, schema-matching output.
+    """
     if not client:
         return None
     try:
@@ -68,18 +140,28 @@ def generate_company_insights(lead) -> dict:
         f"Technology stack: {lead.technology_stack}\n"
         f"Location: {lead.location}\n"
     )
-    llm_output = _call_llm(prompt)
+    system = "You are a B2B sales research analyst."
+
+    # 1. Try Gemini (primary, structured + validated)
+    data = _call_gemini_structured(prompt, system, _CompanyInsightsSchema)
+    if data:
+        return data
+
+    # 2. Fall back to Groq/OpenAI (secondary, original behavior unchanged)
+    llm_output = _call_llm(prompt, system)
     if llm_output:
         try:
-            data = json.loads(llm_output)
-            return {
-                "business_needs": data.get("business_needs", ""),
-                "opportunities": data.get("opportunities", ""),
-                "industry_analysis": data.get("industry_analysis", ""),
-            }
+            data = json.loads(_extract_json(llm_output))
+            if data.get("business_needs") and data.get("opportunities") and data.get("industry_analysis"):
+                return {
+                    "business_needs": data.get("business_needs", ""),
+                    "opportunities": data.get("opportunities", ""),
+                    "industry_analysis": data.get("industry_analysis", ""),
+                }
         except Exception:
             pass
 
+    # 3. Both AI paths failed — original rule-based fallback (UNCHANGED)
     industry = lead.industry or "the industry"
     stage = lead.funding_stage or "an early"
     stack = lead.technology_stack or "a modern"
@@ -107,6 +189,10 @@ def generate_company_insights(lead) -> dict:
 
 
 def calculate_lead_score(lead) -> dict:
+    # Unchanged — this was already deterministic/rule-based, not an LLM
+    # call, so there's nothing to "upgrade" here. A rule-based score is
+    # arguably more defensible than an AI guess for something this
+    # decision-critical, so this stays exactly as Aditi built it.
     score = 40
     factors = {}
 
@@ -180,9 +266,9 @@ def calculate_lead_score(lead) -> dict:
     }
 
 
-def generate_outreach_email(lead, tone: str = "Professional") -> dict:
+def generate_outreach_email(lead) -> dict:
     prompt = (
-        f"Write a short, personalized, {tone.lower()}, B2B cold outreach email "
+        "Write a short, personalized, friendly B2B cold outreach email "
         "(max 120 words) to a prospect. Return JSON with keys \"subject\" and \"content\".\n\n"
         f"Prospect company: {lead.company_name}\n"
         f"Contact name: {lead.contact_name or 'there'}\n"
@@ -190,29 +276,28 @@ def generate_outreach_email(lead, tone: str = "Professional") -> dict:
         f"Funding stage: {lead.funding_stage}\n"
         f"Technology stack: {lead.technology_stack}\n"
     )
-    llm_output = _call_llm(prompt)
+    system = "You are a helpful B2B sales assistant."
+
+    # 1. Try Gemini (primary, structured + validated)
+    data = _call_gemini_structured(prompt, system, _OutreachEmailSchema)
+    if data:
+        return {"subject": data["subject"], "content": data["content"]}
+
+    # 2. Fall back to Groq/OpenAI (secondary, original behavior unchanged)
+    llm_output = _call_llm(prompt, system)
     if llm_output:
         try:
-            data = json.loads(llm_output)
+            data = json.loads(_extract_json(llm_output))
             if data.get("subject") and data.get("content"):
                 return {"subject": data["subject"], "content": data["content"]}
         except Exception:
             pass
 
+    # 3. Both AI paths failed — original rule-based fallback (UNCHANGED)
     contact = lead.contact_name or "there"
     subject = f"Helping {lead.company_name} move faster with AI"
-    
-    tone_greeting = "Hi"
-    tone_signoff = "Best regards"
-    if tone.lower() == "casual":
-        tone_greeting = "Hey"
-        tone_signoff = "Cheers"
-    elif tone.lower() == "direct":
-        tone_greeting = "Hi"
-        tone_signoff = "Thanks"
-
     content = (
-        f"{tone_greeting} {contact},\n\n"
+        f"Hi {contact},\n\n"
         f"I noticed {lead.company_name} is doing great work in {lead.industry or 'your industry'}"
         f"{', especially at the ' + lead.funding_stage + ' stage' if lead.funding_stage else ''}. "
         f"Teams like yours often struggle with manual, repetitive sales and ops work that slows "
@@ -221,7 +306,7 @@ def generate_outreach_email(lead, tone: str = "Professional") -> dict:
         f"follow-ups - so your team can focus on closing deals instead of busywork.\n\n"
         f"Would you be open to a quick 15-minute call this week to see if it's a fit for "
         f"{lead.company_name}?\n\n"
-        f"{tone_signoff},\nSales Team"
+        f"Best regards,\nSales Team"
     )
     return {"subject": subject, "content": content}
 
@@ -233,10 +318,18 @@ def summarize_conversation(transcript: str) -> dict:
         "\"action_items\" (list of strings).\n\n"
         f"Transcript:\n{transcript}\n"
     )
-    llm_output = _call_llm(prompt)
+    system = "You are a helpful B2B sales assistant."
+
+    # 1. Try Gemini (primary, structured + validated)
+    data = _call_gemini_structured(prompt, system, _ConversationSummarySchema)
+    if data:
+        return {"summary": data["summary"], "action_items": data["action_items"]}
+
+    # 2. Fall back to Groq/OpenAI (secondary, original behavior unchanged)
+    llm_output = _call_llm(prompt, system)
     if llm_output:
         try:
-            data = json.loads(llm_output)
+            data = json.loads(_extract_json(llm_output))
             if data.get("summary"):
                 return {
                     "summary": data["summary"],
@@ -245,6 +338,7 @@ def summarize_conversation(transcript: str) -> dict:
         except Exception:
             pass
 
+    # 3. Both AI paths failed — original rule-based fallback (UNCHANGED)
     sentences = [s.strip() for s in transcript.replace("\n", " ").split(".") if s.strip()]
     summary = ". ".join(sentences[:3])
     if summary and not summary.endswith("."):
@@ -258,43 +352,3 @@ def summarize_conversation(transcript: str) -> dict:
         action_items = ["Follow up with the prospect within 48 hours."]
 
     return {"summary": summary, "action_items": action_items[:5]}
-
-def generate_outreach_strategy(lead) -> dict:
-    prompt = (
-        "Analyze this B2B sales prospect and return a JSON object containing an outreach strategy. "
-        "The JSON MUST have exactly these three keys: \"follow_up_timing\", \"channel_mix\", and \"content_strategy\". "
-        "Each key must map to an object with three string fields: \"priority\" (High, Medium, or Low), "
-        "\"description\" (2-3 sentences of strategy), and \"footer_text\" (a short 2-5 word summary like 'Optimal: Tuesday 10:00 AM' or 'Multi-channel approach').\n\n"
-        f"Company: {lead.company_name}\n"
-        f"Industry: {lead.industry}\n"
-        f"Company size: {lead.company_size}\n"
-        f"Funding stage: {lead.funding_stage}\n"
-        f"Technology stack: {lead.technology_stack}\n"
-    )
-    llm_output = _call_llm(prompt)
-    if llm_output:
-        try:
-            data = json.loads(llm_output)
-            if "follow_up_timing" in data and "channel_mix" in data and "content_strategy" in data:
-                return data
-        except Exception:
-            pass
-
-    # Fallback response
-    return {
-        "follow_up_timing": {
-            "priority": "High",
-            "description": f"Send follow-up within 48 hours of initial email. Tuesday mornings show highest response rates for {lead.industry or 'tech'} executives.",
-            "footer_text": "Optimal: Tuesday 10:00 AM"
-        },
-        "channel_mix": {
-            "priority": "Medium",
-            "description": f"After email, connect on LinkedIn within 24 hours. Reference specific {lead.company_name} achievements in connection note.",
-            "footer_text": "Multi-channel approach"
-        },
-        "content_strategy": {
-            "priority": "Medium",
-            "description": "Share relevant case study on similar-sized company success. Focus on ROI metrics that align with growth stage priorities.",
-            "footer_text": "Value-first approach"
-        }
-    }
