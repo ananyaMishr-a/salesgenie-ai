@@ -12,7 +12,7 @@ except ImportError:
     pass
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 load_dotenv()
 
@@ -93,6 +93,19 @@ class _OutreachStrategySchema(BaseModel):
     follow_up_timing: _StrategySection
     channel_mix: _StrategySection
     content_strategy: _StrategySection
+
+
+class _LeadScoreSchema(BaseModel):
+    # Mirrors the exact 4 factor categories the frontend's LeadScorePanel
+    # already renders (company_size, funding_stage, annual_revenue,
+    # technology_fit) — each 0-25 points, so the UI keeps working
+    # unchanged whether the score came from AI or the rule-based fallback.
+    lead_score: int = Field(ge=0, le=100)
+    company_size_points: int = Field(ge=0, le=25)
+    funding_stage_points: int = Field(ge=0, le=25)
+    annual_revenue_points: int = Field(ge=0, le=25)
+    technology_fit_points: int = Field(ge=0, le=25)
+    reasoning: str
 
 
 def _extract_json(raw_text: str) -> str:
@@ -206,8 +219,49 @@ def generate_company_insights(lead) -> dict:
 
 
 def calculate_lead_score(lead) -> dict:
-    # UNCHANGED — this was already deterministic/rule-based, not an LLM
-    # call, so there's nothing to "upgrade" here.
+    prompt = (
+        "Score this B2B sales lead for qualification. Evaluate 4 factors, each "
+        "worth 0-25 points: company_size_points, funding_stage_points, "
+        "annual_revenue_points, technology_fit_points. Return a JSON object with "
+        "keys: \"lead_score\" (0-100, should roughly equal 40 base + the 4 factor "
+        "points added together, but use your judgement), \"company_size_points\", "
+        "\"funding_stage_points\", \"annual_revenue_points\", \"technology_fit_points\" "
+        "(each 0-25), and \"reasoning\" (1-2 sentences explaining the score).\n\n"
+        f"Company: {lead.company_name}\n"
+        f"Industry: {lead.industry}\n"
+        f"Company size: {lead.company_size}\n"
+        f"Annual revenue: {lead.annual_revenue}\n"
+        f"Funding stage: {lead.funding_stage}\n"
+        f"Technology stack: {lead.technology_stack}\n"
+    )
+    system = "You are a B2B sales qualification analyst."
+
+    # 1. NEW — try Gemini first (structured + validated). The score and
+    # per-factor points come from the AI's judgement, but conversion
+    # probability and priority level are always computed deterministically
+    # below (see _derive_probability_and_priority) — this keeps the numbers
+    # internally consistent (e.g. a "High priority" always means score >= 80)
+    # regardless of whether AI or the rule-based fallback produced the score.
+    data = _call_gemini_structured(prompt, system, _LeadScoreSchema)
+    if data:
+        factors = {
+            "company_size": data["company_size_points"],
+            "funding_stage": data["funding_stage_points"],
+            "annual_revenue": data["annual_revenue_points"],
+            "technology_fit": data["technology_fit_points"],
+            "ai_reasoning": data["reasoning"],
+        }
+        probability, priority = _derive_probability_and_priority(data["lead_score"])
+        return {
+            "lead_score": data["lead_score"],
+            "conversion_probability": probability,
+            "priority_level": priority,
+            "scoring_factors": json.dumps(factors),
+        }
+
+    # 2. UNCHANGED — original deterministic rule-based scoring, used as
+    # the fallback if Gemini isn't configured or doesn't return valid,
+    # schema-matching output.
     score = 40
     factors = {}
 
@@ -263,22 +317,31 @@ def calculate_lead_score(lead) -> dict:
     score += tech_points
 
     score = max(0, min(100, score))
+    probability, priority = _derive_probability_and_priority(score)
 
+    return {
+        "lead_score": score,
+        "conversion_probability": probability,
+        "priority_level": priority,
+        "scoring_factors": json.dumps(factors),
+    }
+
+
+def _derive_probability_and_priority(score: int) -> tuple[float, str]:
+    """
+    Shared, deterministic derivation used by BOTH the AI path and the
+    rule-based fallback, so conversion_probability/priority_level always
+    stay consistent with lead_score no matter which path produced it.
+    Identical formula/thresholds to the original implementation.
+    """
     conversion_probability = round(min(95.0, score * 0.85), 1)
-
     if score >= 80:
         priority = "High"
     elif score >= 55:
         priority = "Medium"
     else:
         priority = "Low"
-
-    return {
-        "lead_score": score,
-        "conversion_probability": conversion_probability,
-        "priority_level": priority,
-        "scoring_factors": json.dumps(factors),
-    }
+    return conversion_probability, priority
 
 
 def generate_outreach_email(lead, tone: str = "Professional") -> dict:
