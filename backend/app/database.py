@@ -1,17 +1,33 @@
 import os
-
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "salesgenie.db")
+DEFAULT_SQLITE_URL = f"sqlite:///{DB_PATH.replace('\\', '/')}"
 
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL is not set.")
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
 
-engine = create_engine(DATABASE_URL)
+try:
+    if DATABASE_URL.startswith("sqlite"):
+        engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+    else:
+        engine = create_engine(DATABASE_URL)
+        with engine.connect() as conn:
+            pass
+except Exception:
+    engine = create_engine(DEFAULT_SQLITE_URL, connect_args={"check_same_thread": False})
+
+# Ensure updated_at column exists on pre-existing leads table
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE leads ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+        conn.commit()
+    except Exception:
+        pass
 
 SessionLocal = sessionmaker(
     autocommit=False,

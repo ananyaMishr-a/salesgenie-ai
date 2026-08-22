@@ -84,18 +84,33 @@ export default function LeadIntelligencePanel({ lead, onAnalyze }) {
           </div>
 
           <div className="mt-6 flex-1 space-y-4 overflow-y-auto">
-            {lead.insights.map((insight, idx) => {
-              const Icon = ICONS[idx % ICONS.length]
-              return (
-                <div key={insight.label} className="rounded-lg bg-surface-sunken p-3">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-                    <Icon size={14} className="text-brand" />
-                    {insight.label}
+            {(() => {
+              const rawInsights = lead.insights;
+              const insightsList = Array.isArray(rawInsights)
+                ? rawInsights
+                : rawInsights && typeof rawInsights === 'object'
+                ? [
+                    { label: 'Business Needs', detail: rawInsights.businessNeeds || rawInsights.business_needs },
+                    { label: 'Opportunities', detail: rawInsights.opportunities },
+                    { label: 'Industry Analysis', detail: rawInsights.industryAnalysis || rawInsights.industry_analysis }
+                  ].filter(i => Boolean(i.detail))
+                : rawInsights && typeof rawInsights === 'string'
+                ? [{ label: 'AI Intelligence', detail: rawInsights }]
+                : [];
+
+              return insightsList.map((insight, idx) => {
+                const Icon = ICONS[idx % ICONS.length]
+                return (
+                  <div key={insight.label || idx} className="rounded-lg bg-surface-sunken p-3">
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                      <Icon size={14} className="text-brand" />
+                      {insight.label || 'Insight'}
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">{insight.detail}</p>
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{insight.detail}</p>
-                </div>
-              )
-            })}
+                )
+              });
+            })()}
           </div>
         </>
       )}

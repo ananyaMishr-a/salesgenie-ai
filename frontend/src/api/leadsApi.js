@@ -1,29 +1,75 @@
 import { apiClient } from "./client";
 
+export function formatIST(dateInput) {
+  if (!dateInput) return null;
+  let str = String(dateInput).trim();
+  if (str.endsWith(' IST')) return str;
+
+  // Append 'Z' to naive UTC ISO timestamps from database so JS Date converts to IST (+05:30)
+  if (!str.endsWith('Z') && !str.includes('+') && /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/.test(str)) {
+    str = str.replace(' ', 'T') + 'Z';
+  }
+
+  const date = new Date(str);
+  if (isNaN(date.getTime())) return String(dateInput);
+
+  const formatted = date.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+
+  return `${formatted} IST`;
+}
+
 function mapLead(lead) {
+  const techStackList = Array.isArray(lead.technology_stack)
+    ? lead.technology_stack
+    : lead.technology_stack
+    ? lead.technology_stack.split(",").map((t) => t.trim())
+    : [];
+
+  const createdAtDisplay = lead.created_at ? formatIST(lead.created_at) : null;
+  const updatedAtDisplay = lead.updated_at ? formatIST(lead.updated_at) : createdAtDisplay;
+
   return {
     id: lead.lead_id,
     company: lead.company_name,
-    industry: lead.industry,
-    contactName: lead.contact_name,
-    contactTitle: "", // Backend doesn't provide this
-    email: lead.email,
-    phone: lead.phone,
-    companySize: lead.company_size,
-    annualRevenue: lead.annual_revenue,
-    location: lead.location,
-    fundingStage: lead.funding_stage,
-    fundingAmount: "", // Backend doesn't provide this
-    techStack: lead.technology_stack
-      ? lead.technology_stack.split(",").map((t) => t.trim())
-      : [],
-    segment: lead.lead_status,
-    lastActivity: new Date(lead.created_at).toLocaleDateString(),
-    // see attachIntelligence() below. These stay as safe defaults until
-    // real data (or a user-triggered analysis) is available.
+    company_name: lead.company_name,
+    industry: lead.industry || null,
+    contactName: lead.contact_name || null,
+    contact_name: lead.contact_name || null,
+    contactTitle: null,
+    role: null,
+    email: lead.email || null,
+    phone: lead.phone || null,
+    companySize: lead.company_size || null,
+    size: lead.company_size || null,
+    annualRevenue: lead.annual_revenue || null,
+    revenue: lead.annual_revenue || null,
+    location: lead.location || null,
+    fundingStage: lead.funding_stage || null,
+    funding: lead.funding_stage || null,
+    techStack: techStackList,
+    technology_stack: techStackList.join(", "),
+    status: lead.lead_status || "New",
+    stage: lead.stage || "new",
+    segment: lead.lead_status || "New",
+    tier: null,
+    dealValue: lead.deal_value || 0,
+    createdAt: createdAtDisplay,
+    updatedAt: updatedAtDisplay,
+    created_at: lead.created_at,
+    updated_at: lead.updated_at,
+    lastActivity: lead.updated_at ? `Updated: ${updatedAtDisplay}` : createdAtDisplay ? `Created: ${createdAtDisplay}` : null,
+    timeAgo: null,
     qualificationScore: lead.qualification_score || 0,
     insights: [],
-    hasIntelligence: false, // lets the UI show "Run AI Analysis" vs the real panel
+    hasIntelligence: false,
   };
 }
 
@@ -32,9 +78,9 @@ function mapLead(lead) {
 function mapInsightRecord(insight) {
   if (!insight) return [];
   return [
-    { label: "Business Needs", detail: insight.business_needs },
-    { label: "Opportunities", detail: insight.opportunities },
-    { label: "Industry Analysis", detail: insight.industry_analysis },
+    { type: "Business Needs", label: "Business Needs", detail: insight.business_needs },
+    { type: "Opportunities", label: "Opportunities", detail: insight.opportunities },
+    { type: "Industry Analysis", label: "Industry Analysis", detail: insight.industry_analysis },
   ];
 }
 
@@ -51,7 +97,7 @@ function attachIntelligence(lead, insightRecord, scoreRecord) {
 
   return {
     ...lead,
-    qualificationScore: scoreRecord ? scoreRecord.lead_score : 0,
+    qualificationScore: scoreRecord ? scoreRecord.lead_score : lead.qualificationScore || 0,
     conversionProbability: scoreRecord ? scoreRecord.conversion_probability : 0,
     priorityLevel: scoreRecord ? scoreRecord.priority_level : 'Low',
     scoringFactors,
@@ -64,21 +110,24 @@ function attachIntelligence(lead, insightRecord, scoreRecord) {
 // the snake_case body the backend's LeadCreate/LeadUpdate schemas expect.
 function toApiPayload(values) {
   const payload = {
-    company_name: values.company?.trim(),
+    company_name: (values.company || values.company_name)?.trim(),
     industry: values.industry?.trim() || null,
-    contact_name: values.contactName?.trim() || null,
+    contact_name: (values.contactName || values.contact_name)?.trim() || null,
     email: values.email?.trim() || null,
     phone: values.phone?.trim() || null,
-    company_size: values.companySize?.trim() || null,
-    annual_revenue: values.annualRevenue?.trim() || null,
+    company_size: (values.companySize || values.size)?.trim() || null,
+    annual_revenue: (values.annualRevenue || values.revenue)?.trim() || null,
     location: values.location?.trim() || null,
-    funding_stage: values.fundingStage?.trim() || null,
-    technology_stack: values.techStack?.trim() || null,
+    funding_stage: (values.fundingStage || values.funding)?.trim() || null,
+    technology_stack: Array.isArray(values.techStack)
+      ? values.techStack.join(", ")
+      : values.techStack?.trim() || null,
+    stage: values.stage || "new",
     deal_value:
       values.dealValue === "" || values.dealValue == null ? 0 : Number(values.dealValue),
   };
-  if (values.status) {
-    payload.lead_status = values.status;
+  if (values.status || values.segment) {
+    payload.lead_status = values.status || values.segment;
   }
   return payload;
 }
@@ -88,8 +137,9 @@ function toDisplayMessage(err, fallback) {
   return err?.response?.data?.detail || fallback;
 }
 
-export async function fetchLeads() {
-  const data = await apiClient.get("/leads/");
+export async function fetchLeads(query = "") {
+  const path = query && query.trim() ? `/leads/?q=${encodeURIComponent(query.trim())}` : "/leads/";
+  const data = await apiClient.get(path);
   return data.map(mapLead);
 }
 
@@ -157,6 +207,31 @@ export async function updateLead(id, values) {
     return mapLead(data);
   } catch (err) {
     throw new Error(toDisplayMessage(err, "Couldn't save these changes. Please try again."));
+  }
+}
+
+export async function fetchActivities() {
+  const data = await apiClient.get("/dashboard/activities");
+  return data;
+}
+
+export async function apiAddActivity(noteData) {
+  const payload = {
+    lead_id: noteData.lead_id || null,
+    activity_type: noteData.type || "Note Added",
+    title: noteData.title || "User note",
+    company: noteData.company || "General"
+  };
+  const data = await apiClient.post("/dashboard/activities", payload);
+  return data;
+}
+
+export async function deleteLead(id) {
+  try {
+    const data = await apiClient.delete(`/leads/${id}`);
+    return data;
+  } catch (err) {
+    throw new Error(toDisplayMessage(err, "Couldn't delete lead. Please try again."));
   }
 }
 

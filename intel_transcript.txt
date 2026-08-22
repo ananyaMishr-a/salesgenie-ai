@@ -1,0 +1,11 @@
+Intel Enterprise Technology Partnership Call Transcript
+
+Participants:
+- David Miller (Senior Vice President of Revenue Operations, Intel)
+- Alex Thompson (SalesGenie AI Enterprise Solutions Specialist)
+
+David Miller: "Thanks for meeting today, Alex. Intel is deploying AI-driven sales enablement tools across our global enterprise accounts. Our primary challenge is extracting structured CRM tasks and follow-up recommendations from thousands of high-stakes technical calls."
+
+Alex Thompson: "SalesGenie AI's Milestone 3 & 4 architecture provides bi-directional CRM synchronization, automated lead qualification scoring (+15 Size, +20 Funding, +10 Tech Fit), and AI-driven follow-up recommendations via Google Gemini LLM."
+
+David Miller: "We require SOC2 compliance and seamless FastAPI webhooks. If the pilot demonstrates a 50%+ reduction in manual SDR research overhead, we plan to roll out 500 user licenses in Q4."

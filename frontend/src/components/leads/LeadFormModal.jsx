@@ -3,7 +3,13 @@ import { LoaderCircle, AlertCircle, Sparkles } from 'lucide-react'
 import Modal from '../ui/Modal.jsx'
 import { enrichCompanyData } from '../../api/leadsApi'
 
-const STATUS_OPTIONS = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost']
+const STAGE_OPTIONS = [
+  { label: 'New Lead', value: 'new' },
+  { label: 'Qualified', value: 'qualified' },
+  { label: 'Proposal', value: 'proposal' },
+  { label: 'Negotiation', value: 'negotiation' },
+  { label: 'Closed Won', value: 'closed-won' }
+]
 
 function fieldsFromLead(lead) {
   return {
@@ -19,6 +25,7 @@ function fieldsFromLead(lead) {
     techStack: lead?.techStack?.join(', ') ?? '',
     dealValue: lead?.dealValue ?? '',
     status: lead?.segment ?? 'New',
+    stage: lead?.stage ?? 'new',
   }
 }
 
@@ -190,24 +197,22 @@ export default function LeadFormModal({ mode, lead, onClose, onSave }) {
               onChange={(e) => update('dealValue', e.target.value)}
               placeholder="0"
             />
-            {mode === 'edit' && (
-              <label className="block">
-                <span className="text-xs font-medium uppercase tracking-wide text-ink-faint">
-                  Status
-                </span>
-                <select
-                  value={values.status}
-                  onChange={(e) => update('status', e.target.value)}
-                  className="mt-1.5 w-full rounded-lg border border-surface-border px-3 py-2 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-                >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-wide text-ink-faint">
+                Pipeline Stage
+              </span>
+              <select
+                value={values.stage || 'new'}
+                onChange={(e) => update('stage', e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-surface-border px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              >
+                {STAGE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <Input

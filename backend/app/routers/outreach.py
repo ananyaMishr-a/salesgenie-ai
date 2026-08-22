@@ -16,7 +16,7 @@ def generate_email(lead_id: int, req: schemas.OutreachGenerateRequest, db: Sessi
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    result = ai_service.generate_outreach_email(lead, tone=req.tone)
+    result = ai_service.generate_outreach_email(lead, tone=req.tone, strategy=req.strategy, db=db)
 
     campaign = models.OutreachCampaign(
         lead_id=lead.lead_id,

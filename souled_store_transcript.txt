@@ -1,0 +1,11 @@
+SouledStore Enterprise Sales Discovery Call Transcript
+
+Participants:
+- Kevin Kapoor (Marketing Lead at SouledStore)
+- Alex Thompson (SalesGenie AI Account Executive)
+
+Kevin Kapoor: "Hi Alex. At SouledStore, we are experiencing exponential growth in our direct-to-consumer e-commerce apparel channels across India. However, our marketing and sales development reps spend 12+ hours every week manually analyzing customer conversation feedback, entering meeting summaries into our CRM, and drafting follow-up emails."
+
+Alex Thompson: "SalesGenie AI automates this workflow end-to-end. Our FastAPI backend processes audio and text transcripts in real time, extracts intent and sentiment, auto-generates CRM action items, and syncs directly with Salesforce and HubSpot."
+
+Kevin Kapoor: "That matches our Q3 technology goals perfectly. Our budget is approved for $85,000 for this tier. We want to test automated cold outreach email generation and CRM activity sync for our team of 25 reps starting next Monday."

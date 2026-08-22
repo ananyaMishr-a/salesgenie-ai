@@ -23,12 +23,19 @@ def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[schemas.LeadOut])
-def list_leads(status: str = None, industry: str = None, db: Session = Depends(get_db)):
+def list_leads(status: str = None, industry: str = None, q: str = None, db: Session = Depends(get_db)):
     query = db.query(models.Lead)
     if status:
         query = query.filter(models.Lead.lead_status == status)
     if industry:
         query = query.filter(models.Lead.industry == industry)
+    if q and q.strip():
+        search_pattern = f"%{q.strip()}%"
+        query = query.filter(
+            (models.Lead.company_name.ilike(search_pattern)) |
+            (models.Lead.contact_name.ilike(search_pattern)) |
+            (models.Lead.industry.ilike(search_pattern))
+        )
     return query.order_by(models.Lead.created_at.desc()).all()
 
 
@@ -40,6 +47,8 @@ def get_lead(lead_id: int, db: Session = Depends(get_db)):
     return lead
 
 
+from datetime import datetime
+
 @router.put("/{lead_id}", response_model=schemas.LeadOut)
 def update_lead(lead_id: int, updates: schemas.LeadUpdate, db: Session = Depends(get_db)):
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
@@ -47,6 +56,7 @@ def update_lead(lead_id: int, updates: schemas.LeadUpdate, db: Session = Depends
         raise HTTPException(status_code=404, detail="Lead not found")
     for field, value in updates.model_dump(exclude_unset=True).items():
         setattr(lead, field, value)
+    lead.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(lead)
     return lead
@@ -57,6 +67,10 @@ def delete_lead(lead_id: int, db: Session = Depends(get_db)):
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Delete related recommendations
+    db.query(models.FollowUpRecommendation).filter(models.FollowUpRecommendation.lead_id == lead_id).delete(synchronize_session=False)
+
     db.delete(lead)
     db.commit()
     return {"message": f"Lead {lead_id} deleted successfully"}

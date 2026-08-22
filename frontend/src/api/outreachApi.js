@@ -5,8 +5,8 @@ export async function fetchLeadCampaigns(leadId) {
   return data
 }
 
-export async function generateOutreachEmail(leadId, tone = 'Professional') {
-  const data = await apiClient.post(`/leads/${leadId}/generate-email`, { tone })
+export async function generateOutreachEmail(leadId, tone = 'Professional', strategy = null) {
+  const data = await apiClient.post(`/leads/${leadId}/generate-email`, { tone, strategy })
   return data
 }
 

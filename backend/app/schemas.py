@@ -27,6 +27,7 @@ class LeadCreate(BaseModel):
     location: Optional[str] = None
     funding_stage: Optional[str] = None
     technology_stack: Optional[str] = None
+    stage: Optional[str] = "new"
     deal_value: Optional[float] = 0.0
 
 
@@ -42,6 +43,7 @@ class LeadUpdate(BaseModel):
     funding_stage: Optional[str] = None
     technology_stack: Optional[str] = None
     lead_status: Optional[str] = None
+    stage: Optional[str] = None
     deal_value: Optional[float] = None
 
 
@@ -60,8 +62,10 @@ class LeadOut(BaseModel):
     funding_stage: Optional[str] = None
     technology_stack: Optional[str] = None
     lead_status: str
+    stage: Optional[str] = "new"
     deal_value: float
     created_at: datetime
+    updated_at: Optional[datetime] = None
     qualification_score: int = 0
 
 
@@ -104,7 +108,8 @@ class OutreachCampaignUpdate(BaseModel):
 
 
 class OutreachGenerateRequest(BaseModel):
-    tone: str = "Professional"
+    tone: Optional[str] = "Professional"
+    strategy: Optional[str] = None
 
 
 class InteractionCreate(BaseModel):
@@ -119,7 +124,9 @@ class InteractionOut(BaseModel):
     lead_id: int
     interaction_type: str
     summary: str
+    discussion_points: Optional[str] = None
     action_items: str
+    notes: Optional[str] = None
     interaction_date: datetime
 
 
@@ -130,6 +137,8 @@ class CRMSyncOut(BaseModel):
     lead_id: int
     crm_platform: str
     sync_status: str
+    direction: Optional[str] = "Outbound (SalesGenie → CRM)"
+    changed_fields: Optional[str] = "Lead Qualification Score, AI Insights, Contact Profile, Interaction Logs"
     timestamp: datetime
 
 
@@ -153,3 +162,21 @@ class CompanyEnrichResponse(BaseModel):
     growth_signals: list[str]
     qualification_score: int
     reasoning: str
+
+
+class ActivityCreate(BaseModel):
+    lead_id: Optional[int] = None
+    activity_type: str = "Note Added"
+    title: str
+    company: Optional[str] = None
+
+
+class ActivityOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    activity_id: int
+    lead_id: Optional[int] = None
+    activity_type: str
+    title: str
+    company: Optional[str] = None
+    timestamp: datetime
