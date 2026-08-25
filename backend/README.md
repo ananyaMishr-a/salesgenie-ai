@@ -137,3 +137,19 @@ into that one function later with minimal changes.
 - Dashboard fully operational → `/dashboard/overview`, `/pipeline`,
   `/top-leads`.
 
+---
+
+## 9. Recent Updates (Milestones 3 & 4)
+
+The backend has been recently updated to fully support the dynamic frontend UI for Milestones 3 & 4:
+
+### 🚀 Bug Fixes & Refactors
+- **CRM Sync Webhook (`POST /crm-sync`)**: Fixed payload rejection issues. The backend now properly parses incoming JSON action items and successfully writes them as completed tasks into the local SQLite `CRMSyncLog` table.
+- **Lead Deletion (`DELETE /leads/{lead_id}`)**: Verified and successfully connected the deletion endpoint. Deleting a lead on the React frontend now reliably triggers the backend ORM to securely drop the record from the SQLite database.
+- **AI Rate Limit Handling (`ai_service.py`)**: Added detailed exception logging for Google Gemini / Groq API limits. Fixed an issue where the outreach generator would silently loop; it now reliably falls back to rule-based templates if a `429 Too Many Requests` error occurs, preventing application crashes.
+
+### 📊 Dashboard Live Data Endpoints
+The following endpoints now supply 100% pure real-time data to the React frontend (zero hardcoded fallback data):
+- `GET /dashboard/kpis`: Live calculation of Conversion Rate, Pipeline Value, Avg Response Time, and Avg Sales Cycle.
+- `GET /dashboard/pipeline`: Grouped dictionary of leads perfectly formatted for the 5-column Kanban board (`New`, `Qualified`, `Proposal`, `Negotiation`, `Closed Won`).
+- `GET /dashboard/recommendations`: AI-driven automated follow-up recommendations (e.g., "Schedule a call to discuss technical requirements").
