@@ -1,0 +1,19 @@
+# SalesGenie AI - Frontend Requirements
+# Note: Since this is a React/Node.js project, dependencies are officially managed in `package.json`.
+# You can install them by running `npm install`.
+
+# --- Core Dependencies ---
+react==19.2.8
+react-dom==19.2.8
+react-router-dom==7.1.5
+axios==1.7.9
+@tanstack/react-query==5.101.4
+lucide-react==1.31.0
+sonner==1.7.4
+
+# --- Development & Build Tools ---
+vite==8.2.0
+tailwindcss==4.3.3
+autoprefixer==10.5.4
+vitest==4.1.11
+oxlint==1.75.0
