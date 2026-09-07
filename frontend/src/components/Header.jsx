@@ -8,15 +8,17 @@ import {
   User,
   ChevronDown,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Settings
 } from 'lucide-react';
+
+import ProfileSettingsModal from './auth/ProfileSettingsModal';
 
 export default function Header({ 
   activeTab, 
   setActiveTab, 
   onTriggerSync, 
   isSyncing, 
-  onOpenFastApiConsole,
   onOpenCrmSettingsModal,
   onOpenNewConversationModal,
   onSignOut,
@@ -24,6 +26,7 @@ export default function Header({
 }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const userName = user?.name || user?.email?.split('@')[0] || 'Annu';
   const userEmail = user?.email || 'annu@salesgenie.ai';
@@ -38,12 +41,12 @@ export default function Header({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '1rem',
-        flexWrap: 'wrap'
+        flexWrap: 'nowrap'
       }}>
         {/* Top Left: macOS Dots + Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
           {/* macOS Window Control Dots */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', display: 'none' }}>
             <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ff5f56', border: '1px solid #e0443e' }} />
             <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#ffbd2e', border: '1px solid #dea123' }} />
             <span style={{ width: '11px', height: '11px', borderRadius: '50%', background: '#27c93f', border: '1px solid #1aab29' }} />
@@ -62,8 +65,8 @@ export default function Header({
             }}>
               <Sparkles size={16} color="#ffffff" />
             </div>
-            <span style={{ fontSize: '1.125rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              SalesGenie AI
+            <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+              AI-Powered Sales Forecasting Platform
             </span>
           </div>
         </div>
@@ -75,7 +78,8 @@ export default function Header({
           gap: '0.25rem',
           background: 'var(--bg-tab-bar)',
           padding: '0.25rem',
-          borderRadius: '10px'
+          borderRadius: '10px',
+          flexShrink: 0
         }}>
           {[
             { id: 'leads', label: 'Leads' },
@@ -185,6 +189,30 @@ export default function Header({
                   <button
                     onClick={() => {
                       setIsProfileOpen(false);
+                      setShowSettingsModal(true);
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      background: 'transparent',
+                      color: '#475569',
+                      border: 'none',
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      marginBottom: '0.25rem'
+                    }}
+                  >
+                    <Settings size={14} /> Settings
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsProfileOpen(false);
                       setShowSignOutConfirm(true);
                     }}
                     style={{
@@ -231,7 +259,7 @@ export default function Header({
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)'
           }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
-              Sign Out of SalesGenie AI?
+              Sign Out of AI-Powered Sales Forecasting Platform?
             </h3>
             <p style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '1.25rem', lineHeight: '1.5' }}>
               Are you sure you want to sign out? Your persistent CRM data, leads, meetings, and activity logs will be safely preserved.
@@ -265,6 +293,19 @@ export default function Header({
             </div>
           </div>
         </div>
+      )}
+      {showSettingsModal && (
+        <ProfileSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          user={user}
+          onAccountDeleted={onSignOut}
+          onUpdateUser={(updatedUser) => {
+            if (typeof window !== 'undefined') {
+              window.location.reload(); // Simple reload to refresh all context/data
+            }
+          }}
+        />
       )}
     </>
   );

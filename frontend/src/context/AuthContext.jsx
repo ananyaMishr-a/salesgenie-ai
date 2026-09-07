@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginRequest, registerRequest } from '../api/authApi.js'
+import { loginRequest, requestOtpRequest, verifyOtpRequest } from '../api/authApi.js'
 
 const AuthContext = createContext(null)
 const SESSION_KEY = 'salesgenie_session'
@@ -13,39 +13,29 @@ export function AuthProvider({ children }) {
       const stored = localStorage.getItem(SESSION_KEY);
       if (stored) return JSON.parse(stored);
 
-      const defaultUser = { name: 'Annu', email: 'annu@salesgenie.ai', role: 'Admin' };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(defaultUser));
-      return defaultUser;
+      return null;
     } catch {
-      return { name: 'Annu', email: 'annu@salesgenie.ai', role: 'Admin' };
+      return null;
     }
   });
 
   const [isLoading, setIsLoading] = useState(false);
 
   async function login({ email, password }) {
-    try {
-      const sessionUser = await loginRequest({ email, password });
-      localStorage.removeItem('salesgenie_logout');
-      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
-      setUser(sessionUser);
-      return sessionUser;
-    } catch (err) {
-      // Fallback demo login if backend auth fails
-      const demoUser = {
-        name: email.split('@')[0] || 'Annu',
-        email: email,
-        role: 'Admin'
-      };
-      localStorage.removeItem('salesgenie_logout');
-      localStorage.setItem(SESSION_KEY, JSON.stringify(demoUser));
-      setUser(demoUser);
-      return demoUser;
-    }
+    const sessionUser = await loginRequest({ email, password });
+    localStorage.removeItem('salesgenie_logout');
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+    setUser(sessionUser);
+    return sessionUser;
   }
 
   async function signup({ name, email, password }) {
-    const sessionUser = await registerRequest({ name, email, password });
+    // Only requests OTP, does not log user in
+    return await requestOtpRequest({ name, email, password });
+  }
+  
+  async function verifyOtp({ email, otpCode }) {
+    const sessionUser = await verifyOtpRequest({ email, otpCode });
     localStorage.removeItem('salesgenie_logout');
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
     setUser(sessionUser);
@@ -64,7 +54,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: Boolean(user), login, signup, logout }}
+      value={{ user, isLoading, isAuthenticated: Boolean(user), login, signup, verifyOtp, logout }}
     >
       {children}
     </AuthContext.Provider>

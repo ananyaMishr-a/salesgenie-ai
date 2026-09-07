@@ -20,7 +20,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-import google.generativeai as genai
+from openai import OpenAI
 
 try:
     from ai.schemas import CompanyResearchInput, CompanyInsights
@@ -28,9 +28,13 @@ except ImportError:
     from schemas import CompanyResearchInput, CompanyInsights
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel("gemini-flash-latest")
+# Setup Groq client using OpenAI SDK
+client = OpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1",
+)
+model_name = "qwen/qwen3.8-27b"
 
 PROMPT_TEMPLATE = """
 You are a B2B sales research analyst. Analyze the following company and return
@@ -57,7 +61,7 @@ Return ONLY the JSON object, nothing else.
 
 def _call_gemini(company_name: str, domain: str | None) -> dict:
     """
-    Attempts the real Gemini call and returns a parsed dict.
+    Attempts the real AI call (now via Groq) and returns a parsed dict.
     Raises an exception on ANY failure (network, quota, bad JSON) --
     the caller decides what to do about it.
     """
@@ -66,10 +70,14 @@ def _call_gemini(company_name: str, domain: str | None) -> dict:
         domain=domain or "unknown"
     )
 
-    response = model.generate_content(prompt)
-    raw_text = response.text.strip()
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0
+    )
+    raw_text = response.choices[0].message.content.strip()
 
-    # Gemini sometimes wraps JSON in ```json ... ``` -- strip that off if present
+    # Groq sometimes wraps JSON in ```json ... ``` -- strip that off if present
     if raw_text.startswith("```"):
         raw_text = raw_text.strip("`")
         raw_text = raw_text.replace("json\n", "", 1).replace("json", "", 1)

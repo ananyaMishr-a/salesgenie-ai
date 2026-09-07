@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services import ai_service
+from app.auth_utils import get_current_user
 
 router = APIRouter(prefix="/leads", tags=["2. Lead Intelligence"])
 
 
 @router.post("/{lead_id}/analyze", response_model=schemas.CompanyInsightOut)
-def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def analyze_lead(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
@@ -31,7 +32,11 @@ def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{lead_id}/insights", response_model=List[schemas.CompanyInsightOut])
-def get_insights(lead_id: int, db: Session = Depends(get_db)):
+def get_insights(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
     insights = (
         db.query(models.CompanyInsight)
         .filter(models.CompanyInsight.lead_id == lead_id)

@@ -6,7 +6,6 @@ import Milestone3Banner from './components/Milestone3Banner';
 import CRMSyncStatus from './components/CRMSyncStatus';
 import MeetingSummarizer from './components/MeetingSummarizer';
 import RecentActivityFeed from './components/RecentActivityFeed';
-import FastApiConsole from './components/FastApiConsole';
 import NewConversationModal from './components/NewConversationModal';
 import CRMSettingsModal from './components/CRMSettingsModal';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -62,7 +61,6 @@ function MainAppContent() {
   const [activities, setActivities] = useState([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFastApiOpen, setIsFastApiOpen] = useState(false);
   const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
   const [isCrmSettingsOpen, setIsCrmSettingsOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -453,7 +451,6 @@ function MainAppContent() {
             setActiveTab={setActiveTab}
             onTriggerSync={handleTriggerSync}
             isSyncing={isSyncing}
-            onOpenFastApiConsole={() => setIsFastApiOpen(true)}
             onOpenCrmSettingsModal={() => setIsCrmSettingsOpen(true)}
             onOpenNewConversationModal={() => setIsNewConversationOpen(true)}
             onSignOut={handleSignOut}
@@ -542,11 +539,6 @@ function MainAppContent() {
         </div>
 
         {/* Modals */}
-        <FastApiConsole
-          isOpen={isFastApiOpen}
-          onClose={() => setIsFastApiOpen(false)}
-        />
-
         <NewConversationModal
           isOpen={isNewConversationOpen}
           onClose={() => setIsNewConversationOpen(false)}

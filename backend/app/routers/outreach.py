@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services import ai_service
+from app.auth_utils import get_current_user
 
 router = APIRouter(tags=["3. AI Outreach"])
 
 
 @router.post("/leads/{lead_id}/generate-email", response_model=schemas.OutreachCampaignOut)
-def generate_email(lead_id: int, req: schemas.OutreachGenerateRequest, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def generate_email(lead_id: int, req: schemas.OutreachGenerateRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
@@ -31,7 +32,11 @@ def generate_email(lead_id: int, req: schemas.OutreachGenerateRequest, db: Sessi
 
 
 @router.get("/leads/{lead_id}/campaigns", response_model=List[schemas.OutreachCampaignOut])
-def get_lead_campaigns(lead_id: int, db: Session = Depends(get_db)):
+def get_lead_campaigns(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
     campaigns = (
         db.query(models.OutreachCampaign)
         .filter(models.OutreachCampaign.lead_id == lead_id)
@@ -42,13 +47,13 @@ def get_lead_campaigns(lead_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/campaigns", response_model=List[schemas.OutreachCampaignOut])
-def get_all_campaigns(db: Session = Depends(get_db)):
-    return db.query(models.OutreachCampaign).order_by(models.OutreachCampaign.created_at.desc()).all()
+def get_all_campaigns(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.OutreachCampaign).join(models.Lead).filter(models.Lead.user_id == current_user.user_id).order_by(models.OutreachCampaign.created_at.desc()).all()
 
 
 @router.put("/campaigns/{campaign_id}/status", response_model=schemas.OutreachCampaignOut)
-def update_campaign_status(campaign_id: int, update: schemas.OutreachCampaignUpdate, db: Session = Depends(get_db)):
-    campaign = db.query(models.OutreachCampaign).filter(models.OutreachCampaign.campaign_id == campaign_id).first()
+def update_campaign_status(campaign_id: int, update: schemas.OutreachCampaignUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    campaign = db.query(models.OutreachCampaign).join(models.Lead).filter(models.OutreachCampaign.campaign_id == campaign_id, models.Lead.user_id == current_user.user_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     campaign.campaign_status = update.campaign_status
@@ -58,8 +63,8 @@ def update_campaign_status(campaign_id: int, update: schemas.OutreachCampaignUpd
 
 
 @router.get("/leads/{lead_id}/strategy")
-def get_outreach_strategy(lead_id: int, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def get_outreach_strategy(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     

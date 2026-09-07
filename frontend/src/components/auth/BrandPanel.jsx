@@ -21,7 +21,7 @@ export default function BrandPanel() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25 shrink-0">
           <Sparkles size={20} className="text-white" strokeWidth={2.5} />
         </div>
-        <span className="text-xl font-bold tracking-tight text-white">SalesGenie AI</span>
+        <span className="text-xl font-bold tracking-tight text-white">AI Sales Platform</span>
       </div>
 
       {/* Vertically Centered Main Hero Content Group */}

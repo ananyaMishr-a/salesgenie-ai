@@ -26,6 +26,16 @@ client.interceptors.request.use(
 client.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('salesgenie_logout');
+      localStorage.removeItem('salesgenie_session');
+      localStorage.removeItem('salesgenie_token');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('isAuthenticated');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
     const message =
       error.response?.data?.detail || error.message || "Something went wrong.";
     toast.error(typeof message === "string" ? message : "An error occurred");

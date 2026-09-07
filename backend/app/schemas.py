@@ -16,6 +16,17 @@ class LoginResponse(BaseModel):
     token: str
 
 
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class VerifyOtpRequest(BaseModel):
+    email: str
+    otp_code: str
+
+
 class LeadCreate(BaseModel):
     company_name: str
     industry: Optional[str] = None
@@ -180,3 +191,24 @@ class ActivityOut(BaseModel):
     title: str
     company: Optional[str] = None
     timestamp: datetime
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str
+
+
+class UpdatePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class RequestDeleteOtpRequest(BaseModel):
+    email: str
+    password: str
+
+
+class DeleteAccountRequest(BaseModel):
+    email: str
+    password: str
+    otp_code: str
+    reason: Optional[str] = None

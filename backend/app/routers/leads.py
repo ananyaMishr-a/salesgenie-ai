@@ -9,13 +9,14 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.auth_utils import get_current_user
 
 router = APIRouter(prefix="/leads", tags=["1. Lead Management"])
 
 
 @router.post("/", response_model=schemas.LeadOut)
-def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
-    new_lead = models.Lead(**lead.model_dump())
+def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    new_lead = models.Lead(**lead.model_dump(), user_id=current_user.user_id)
     db.add(new_lead)
     db.commit()
     db.refresh(new_lead)
@@ -23,8 +24,8 @@ def create_lead(lead: schemas.LeadCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[schemas.LeadOut])
-def list_leads(status: str = None, industry: str = None, q: str = None, db: Session = Depends(get_db)):
-    query = db.query(models.Lead)
+def list_leads(status: str = None, industry: str = None, q: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    query = db.query(models.Lead).filter(models.Lead.user_id == current_user.user_id)
     if status:
         query = query.filter(models.Lead.lead_status == status)
     if industry:
@@ -40,8 +41,8 @@ def list_leads(status: str = None, industry: str = None, q: str = None, db: Sess
 
 
 @router.get("/{lead_id}", response_model=schemas.LeadOut)
-def get_lead(lead_id: int, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def get_lead(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     return lead
@@ -50,8 +51,8 @@ def get_lead(lead_id: int, db: Session = Depends(get_db)):
 from datetime import datetime
 
 @router.put("/{lead_id}", response_model=schemas.LeadOut)
-def update_lead(lead_id: int, updates: schemas.LeadUpdate, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def update_lead(lead_id: int, updates: schemas.LeadUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     for field, value in updates.model_dump(exclude_unset=True).items():
@@ -63,8 +64,8 @@ def update_lead(lead_id: int, updates: schemas.LeadUpdate, db: Session = Depends
 
 
 @router.delete("/{lead_id}")
-def delete_lead(lead_id: int, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def delete_lead(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     
@@ -77,7 +78,7 @@ def delete_lead(lead_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/import-csv")
-async def import_leads_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_leads_csv(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file")
 
@@ -100,6 +101,7 @@ async def import_leads_csv(file: UploadFile = File(...), db: Session = Depends(g
             location=row.get("location"),
             funding_stage=row.get("funding_stage"),
             technology_stack=row.get("technology_stack"),
+            user_id=current_user.user_id,
         )
         db.add(lead)
         created_count += 1

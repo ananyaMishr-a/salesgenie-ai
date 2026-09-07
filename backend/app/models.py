@@ -22,6 +22,7 @@ class Lead(Base):
     __tablename__ = "leads"
 
     lead_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=True)
     company_name = Column(String, nullable=False)
     industry = Column(String, nullable=True)
     contact_name = Column(String, nullable=True)

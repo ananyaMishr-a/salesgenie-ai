@@ -37,17 +37,31 @@ export async function loginRequest({ email, password }) {
   }
 }
 
-/**
- * Registers a new user, then logs them in automatically (the backend
- * returns the same { email, name, role, token } shape /auth/login does).
- * `name` is sent as a query param — that's how POST /auth/register expects it.
- */
-export async function registerRequest({ name, email, password }) {
+export async function requestOtpRequest({ name, email, password }) {
   try {
-    const query = new URLSearchParams({ name: name?.trim() || 'New User' }).toString()
-    const data = await apiClient.post(`/auth/register?${query}`, {
+    const data = await apiClient.post(`/auth/request-otp`, {
+      name: name?.trim() || 'New User',
       email: email.trim().toLowerCase(),
       password,
+    })
+    return data
+  } catch (err) {
+    const status = err?.response?.status
+    if (status === 400) {
+      throw new Error(err?.response?.data?.detail || 'An account with this email already exists.')
+    }
+    if (!err?.response) {
+      throw new Error('Could not reach the server. Is the backend running?')
+    }
+    throw new Error(err?.response?.data?.detail || 'Sign up failed. Please try again.')
+  }
+}
+
+export async function verifyOtpRequest({ email, otpCode }) {
+  try {
+    const data = await apiClient.post(`/auth/verify-otp`, {
+      email: email.trim().toLowerCase(),
+      otp_code: otpCode,
     })
 
     if (data?.token) {
@@ -60,13 +74,45 @@ export async function registerRequest({ name, email, password }) {
       role: data.role,
     }
   } catch (err) {
-    const status = err?.response?.status
-    if (status === 400) {
-      throw new Error(err?.response?.data?.detail || 'An account with this email already exists.')
-    }
     if (!err?.response) {
       throw new Error('Could not reach the server. Is the backend running?')
     }
-    throw new Error(err?.response?.data?.detail || 'Sign up failed. Please try again.')
+    throw new Error(err?.response?.data?.detail || 'Invalid OTP code. Please try again.')
+  }
+}
+
+export async function updateProfileRequest({ name }) {
+  try {
+    const data = await apiClient.put(`/auth/me/profile`, { name })
+    return data
+  } catch (err) {
+    throw new Error(err?.response?.data?.detail || 'Failed to update profile.')
+  }
+}
+
+export async function updatePasswordRequest({ old_password, new_password }) {
+  try {
+    const data = await apiClient.put(`/auth/me/password`, { old_password, new_password })
+    return data
+  } catch (err) {
+    throw new Error(err?.response?.data?.detail || 'Failed to update password.')
+  }
+}
+
+export async function requestDeleteOtpRequest({ email, password }) {
+  try {
+    const data = await apiClient.post(`/auth/me/delete-otp`, { email, password })
+    return data
+  } catch (err) {
+    throw new Error(err?.response?.data?.detail || 'Failed to send OTP.')
+  }
+}
+
+export async function deleteAccountRequest({ email, password, otp_code, reason }) {
+  try {
+    const data = await apiClient.post(`/auth/me/delete`, { email, password, otp_code, reason })
+    return data
+  } catch (err) {
+    throw new Error(err?.response?.data?.detail || 'Failed to delete account.')
   }
 }

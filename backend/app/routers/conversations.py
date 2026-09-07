@@ -8,13 +8,14 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services import ai_service
+from app.auth_utils import get_current_user
 
 router = APIRouter(tags=["5. Conversation Intelligence & CRM"])
 
 
 @router.post("/leads/{lead_id}/conversations", response_model=schemas.InteractionOut)
-def add_conversation(lead_id: int, payload: schemas.InteractionCreate, db: Session = Depends(get_db)):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+def add_conversation(lead_id: int, payload: schemas.InteractionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
@@ -56,7 +57,12 @@ def add_conversation(lead_id: int, payload: schemas.InteractionCreate, db: Sessi
 
 
 @router.get("/leads/{lead_id}/conversations", response_model=List[schemas.InteractionOut])
-def get_conversations(lead_id: int, db: Session = Depends(get_db)):
+def get_conversations(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # Verify lead ownership
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
     interactions = (
         db.query(models.SalesInteraction)
         .filter(models.SalesInteraction.lead_id == lead_id)
@@ -67,19 +73,19 @@ def get_conversations(lead_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/conversations", response_model=List[schemas.InteractionOut])
-def get_all_conversations(db: Session = Depends(get_db)):
+def get_all_conversations(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
-    Returns all sales interactions across all leads in the database.
+    Returns all sales interactions across all leads for the current user.
     """
-    return db.query(models.SalesInteraction).order_by(models.SalesInteraction.interaction_date.desc()).all()
+    return db.query(models.SalesInteraction).join(models.Lead).filter(models.Lead.user_id == current_user.user_id).order_by(models.SalesInteraction.interaction_date.desc()).all()
 
 
 @router.put("/conversations/{interaction_id}", response_model=schemas.InteractionOut)
-def update_conversation(interaction_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_conversation(interaction_id: int, payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Updates action items, summary, or transcript fields for a sales interaction in the database.
     """
-    interaction = db.query(models.SalesInteraction).filter(models.SalesInteraction.interaction_id == interaction_id).first()
+    interaction = db.query(models.SalesInteraction).join(models.Lead).filter(models.SalesInteraction.interaction_id == interaction_id, models.Lead.user_id == current_user.user_id).first()
     if not interaction:
         raise HTTPException(status_code=404, detail="Conversation interaction not found")
     
@@ -107,30 +113,22 @@ def crm_sync(
     crm_platform: str = "Salesforce",
     direction: str = "Outbound (SalesGenie → CRM)",
     changed_fields: str = "Lead Qualification Score, AI Insights, Contact Profile, Interaction Logs",
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
-    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id).first()
+    lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    # Idempotency Check:
-    # If a sync was performed for this lead & platform within the last 60 seconds,
-    # return the existing recent log instead of creating a duplicate log entry!
-    cutoff = datetime.utcnow() - timedelta(seconds=60)
-    recent = (
-        db.query(models.CRMSyncLog)
-        .filter(
-            models.CRMSyncLog.lead_id == lead_id,
-            models.CRMSyncLog.crm_platform == crm_platform,
-            models.CRMSyncLog.timestamp >= cutoff
-        )
-        .order_by(models.CRMSyncLog.timestamp.desc())
-        .first()
-    )
+    from app.services.crm_service import push_lead_to_salesforce
+    try:
+        # Call the real Salesforce API integration
+        sf_result = push_lead_to_salesforce(lead)
+    except Exception as e:
+        # Pass up the HTTP exception from the service
+        raise e
 
-    if recent:
-        return recent
-
+    # Log successful sync
     log = models.CRMSyncLog(
         lead_id=lead.lead_id,
         crm_platform=crm_platform,
@@ -144,7 +142,7 @@ def crm_sync(
     act = models.ActivityLog(
         lead_id=lead.lead_id,
         activity_type="CRM Sync",
-        title=f"Synced {lead.company_name} with {crm_platform}",
+        title=f"Synced {lead.company_name} with {crm_platform} (SF_ID: {sf_result.get('sf_id')})",
         company=lead.company_name,
         timestamp=datetime.utcnow()
     )
@@ -156,5 +154,5 @@ def crm_sync(
 
 
 @router.get("/crm-sync-logs", response_model=List[schemas.CRMSyncOut])
-def get_crm_logs(db: Session = Depends(get_db)):
-    return db.query(models.CRMSyncLog).order_by(models.CRMSyncLog.timestamp.desc()).all()
+def get_crm_logs(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.CRMSyncLog).join(models.Lead).filter(models.Lead.user_id == current_user.user_id).order_by(models.CRMSyncLog.timestamp.desc()).all()

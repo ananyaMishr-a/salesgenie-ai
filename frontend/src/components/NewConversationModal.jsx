@@ -6,7 +6,7 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
-import { presetTranscripts } from '../data/mockData';
+
 import { submitConversationTranscript, mapConversationFromApi } from '../api/conversationsApi';
 
 export default function NewConversationModal({ isOpen, onClose, onAddMeeting, selectedProspect, prospectsList = [] }) {
@@ -46,28 +46,7 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
     "Synthesizing CRM action items & due dates..."
   ];
 
-  const handleSelectPreset = (preset) => {
-    setErrorMessage(null);
-    setTranscriptText(preset.transcriptText);
 
-    // Auto-match preset to database lead if present in prospectsList
-    const foundLead = prospectsList.find(p => {
-      const pComp = (p.company || p.company_name || '').toLowerCase();
-      const presetComp = (preset.company || '').toLowerCase();
-      const pName = (p.contactName || p.contact_name || '').toLowerCase();
-      const presetName = (preset.clientName || '').toLowerCase();
-
-      return (presetComp && pComp.includes(presetComp)) || (presetName && pName.includes(presetName));
-    });
-
-    if (foundLead) {
-      syncLeadDetails(foundLead.id);
-    } else {
-      setClientName(preset.clientName);
-      setCompany(preset.company);
-      setRole(preset.clientRole);
-    }
-  };
 
   const handleLeadChange = (leadId) => {
     setErrorMessage(null);
@@ -150,36 +129,7 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
           </button>
         </div>
 
-        {/* Preset Selector */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', marginBottom: '0.5rem' }}>
-            Or pick a sample meeting transcript preset:
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {presetTranscripts.map((p, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSelectPreset(p)}
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '0.375rem 0.75rem',
-                  fontSize: '0.75rem',
-                  color: '#2563eb',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem'
-                }}
-              >
-                <FileText size={13} /> {p.title}
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* Form */}
         <form onSubmit={handleAnalyze} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

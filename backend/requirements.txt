@@ -8,3 +8,7 @@ google-generativeai==0.8.6
 python-dotenv==1.0.1
 passlib==1.7.4
 python-jose[cryptography]==3.3.0
+simple-salesforce==1.12.6
+requests==2.34.2
+psycopg2-binary==2.9.12
+groq==0.11.0
