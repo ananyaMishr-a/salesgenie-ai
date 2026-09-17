@@ -45,6 +45,7 @@ class Lead(Base):
     interactions = relationship("SalesInteraction", back_populates="lead", cascade="all, delete-orphan")
     crm_logs = relationship("CRMSyncLog", back_populates="lead", cascade="all, delete-orphan")
     recommendations = relationship("FollowUpRecommendation", back_populates="lead", cascade="all, delete-orphan")
+    outreach_strategies = relationship("OutreachStrategy", back_populates="lead", cascade="all, delete-orphan")
 
     @property
     def qualification_score(self):
@@ -91,6 +92,17 @@ class OutreachCampaign(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     lead = relationship("Lead", back_populates="campaigns")
+
+
+class OutreachStrategy(Base):
+    __tablename__ = "outreach_strategies"
+
+    strategy_id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.lead_id", ondelete="CASCADE"))
+    strategy_json = Column(Text, nullable=False)
+    generated_at = Column(DateTime, default=datetime.utcnow)
+
+    lead = relationship("Lead", back_populates="outreach_strategies")
 
 
 class SalesInteraction(Base):

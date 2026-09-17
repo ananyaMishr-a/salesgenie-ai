@@ -12,7 +12,7 @@ import {
   Sparkles,
   CheckCircle2
 } from 'lucide-react';
-import { generateOutreachEmail, fetchOutreachStrategy } from '../api/outreachApi';
+import { generateOutreachEmail, fetchOutreachStrategy, updateCampaign } from '../api/outreachApi';
 
 export default function OutreachGeneratorView({ prospect, onBack }) {
   const [selectedTone, setSelectedTone] = useState('Professional');
@@ -22,6 +22,7 @@ export default function OutreachGeneratorView({ prospect, onBack }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [savedDraft, setSavedDraft] = useState(false);
+  const [campaignId, setCampaignId] = useState(null);
 
   const contactFirstName = prospect?.contactName ? prospect.contactName.split(' ')[0] : 'there';
   const companyName = prospect?.company || 'your company';
@@ -56,6 +57,7 @@ export default function OutreachGeneratorView({ prospect, onBack }) {
         if (emailRes && (emailRes.email_subject || emailRes.subject)) {
           setSubject(emailRes.email_subject || emailRes.subject);
           setEmailBody(emailRes.email_content || emailRes.content);
+          setCampaignId(emailRes.campaign_id || emailRes.id);
         } else {
           setError("AI email generation failed. Please try again.");
           setEmailBody("AI email generation failed. Please try again.");
@@ -90,9 +92,26 @@ export default function OutreachGeneratorView({ prospect, onBack }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    if (campaignId) {
+      try {
+        await updateCampaign(campaignId, {
+          campaign_status: 'Draft',
+          email_subject: subject,
+          email_content: emailBody
+        });
+      } catch (err) {
+        console.error("Failed to save draft", err);
+      }
+    }
     setSavedDraft(true);
     setTimeout(() => setSavedDraft(false), 2500);
+  };
+
+  const handleSendEmail = () => {
+    const toEmail = `${contactFirstName.toLowerCase()}@${companyName.replace(/\s+/g, '').toLowerCase()}.com`;
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -241,20 +260,30 @@ export default function OutreachGeneratorView({ prospect, onBack }) {
               <button
                 onClick={handleCopy}
                 className="btn-light-secondary"
-                style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem' }}
+                style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
               >
                 {copied ? <Check size={14} color="#15803d" /> : <Copy size={14} />}
-                {copied ? 'Copied to Clipboard' : 'Copy Email'}
+                {copied ? 'Copied' : 'Copy Email'}
               </button>
 
-              <button
-                onClick={handleSaveDraft}
-                className="btn-blue-primary"
-                style={{ fontSize: '0.75rem', padding: '0.375rem 0.875rem' }}
-              >
-                {savedDraft ? <CheckCircle2 size={14} /> : <Send size={14} />}
-                {savedDraft ? 'Saved to Outreach Drafts!' : 'Save Outreach Draft'}
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={handleSaveDraft}
+                  className="btn-light-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.375rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                >
+                  {savedDraft ? <CheckCircle2 size={14} color="#15803d" /> : <CheckCircle2 size={14} />}
+                  {savedDraft ? 'Saved!' : 'Save Draft'}
+                </button>
+                <button
+                  onClick={handleSendEmail}
+                  className="btn-blue-primary"
+                  style={{ fontSize: '0.75rem', padding: '0.375rem 0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                >
+                  <Send size={14} />
+                  Send via Gmail
+                </button>
+              </div>
             </div>
           </div>
         </div>

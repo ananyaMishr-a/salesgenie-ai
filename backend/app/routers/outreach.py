@@ -56,7 +56,12 @@ def update_campaign_status(campaign_id: int, update: schemas.OutreachCampaignUpd
     campaign = db.query(models.OutreachCampaign).join(models.Lead).filter(models.OutreachCampaign.campaign_id == campaign_id, models.Lead.user_id == current_user.user_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    campaign.campaign_status = update.campaign_status
+    if update.campaign_status is not None:
+        campaign.campaign_status = update.campaign_status
+    if update.email_subject is not None:
+        campaign.email_subject = update.email_subject
+    if update.email_content is not None:
+        campaign.email_content = update.email_content
     db.commit()
     db.refresh(campaign)
     return campaign

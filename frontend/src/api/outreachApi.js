@@ -14,3 +14,8 @@ export async function fetchOutreachStrategy(leadId) {
   const data = await apiClient.get(`/leads/${leadId}/strategy`)
   return data
 }
+
+export async function updateCampaign(campaignId, data) {
+  const response = await apiClient.put(`/outreach/campaigns/${campaignId}/status`, data)
+  return response
+}

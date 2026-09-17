@@ -149,8 +149,8 @@ export async function fetchLeads(query = "") {
 export async function fetchLeadById(id) {
   const [leadData, insights, scores] = await Promise.all([
     apiClient.get(`/leads/${id}`),
-    apiClient.get(`/leads/${id}/insights`).catch(() => []),
-    apiClient.get(`/leads/${id}/scores`).catch(() => []),
+    apiClient.get(`/leads/${id}/insights`).catch((e) => { console.error("insights error", e); return []; }),
+    apiClient.get(`/leads/${id}/scores`).catch((e) => { console.error("scores error", e); return []; }),
   ]);
 
   const lead = mapLead(leadData);

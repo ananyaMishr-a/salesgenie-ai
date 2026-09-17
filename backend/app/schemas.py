@@ -115,7 +115,9 @@ class OutreachCampaignOut(BaseModel):
 
 
 class OutreachCampaignUpdate(BaseModel):
-    campaign_status: str
+    campaign_status: Optional[str] = None
+    email_subject: Optional[str] = None
+    email_content: Optional[str] = None
 
 
 class OutreachGenerateRequest(BaseModel):

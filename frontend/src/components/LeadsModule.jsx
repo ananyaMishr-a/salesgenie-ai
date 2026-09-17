@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Sparkles, 
@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import AddLeadModal from './AddLeadModal';
 import EditLeadModal from './EditLeadModal';
-import { runLeadIntelligence, deleteLead } from '../api/leadsApi';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
+import { runLeadIntelligence, deleteLead, fetchLeadById } from '../api/leadsApi';
 import { Trash2 } from 'lucide-react';
 
 export default function LeadsModule({ 
@@ -28,6 +29,7 @@ export default function LeadsModule({
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [isEditLeadModalOpen, setIsEditLeadModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [analyzedLeads, setAnalyzedLeads] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -37,6 +39,26 @@ export default function LeadsModule({
     const nameMatch = p.contactName ? p.contactName.toLowerCase().includes(query) : false;
     return companyMatch || nameMatch;
   });
+
+  // Automatically fetch intelligence data for the selected prospect
+  useEffect(() => {
+    let isMounted = true;
+    if (selectedProspect && selectedProspect.id && !selectedProspect.insights?.length && !analyzedLeads.includes(selectedProspect.id)) {
+      setIsAnalyzing(true);
+      fetchLeadById(selectedProspect.id).then(fullLead => {
+        if (!isMounted) return;
+        if (fullLead.hasIntelligence) {
+          setSelectedProspect(fullLead);
+          setAnalyzedLeads(prev => [...prev, fullLead.id]);
+        }
+        setIsAnalyzing(false);
+      }).catch(err => {
+        console.error("Failed to fetch full lead data:", err);
+        if (isMounted) setIsAnalyzing(false);
+      });
+    }
+    return () => { isMounted = false; };
+  }, [selectedProspect?.id]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -161,11 +183,7 @@ export default function LeadsModule({
                   </button>
                   {onDeleteLead && (
                     <button 
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to delete lead ${selectedProspect.company}?`)) {
-                          onDeleteLead(selectedProspect.id);
-                        }
-                      }} 
+                      onClick={() => setIsDeleteModalOpen(true)} 
                       className="btn-light-secondary" 
                       style={{ padding: '0.5rem 0.875rem', fontSize: '0.8125rem', color: '#ef4444', borderColor: '#fca5a5' }}
                     >
@@ -415,6 +433,18 @@ export default function LeadsModule({
         leadToEdit={selectedProspect}
         onSaveLead={onUpdateLead}
       />
+
+      {selectedProspect && (
+        <DeleteConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={() => {
+            onDeleteLead(selectedProspect.id);
+            setIsDeleteModalOpen(false);
+          }}
+          entityName={selectedProspect.company}
+        />
+      )}
     </div>
   );
 }

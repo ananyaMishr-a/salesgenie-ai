@@ -26,7 +26,7 @@ if GEMINI_API_KEY and not GEMINI_API_KEY.startswith("your_actual"):
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        _gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        _gemini_model = genai.GenerativeModel("gemini-3.8-flash")
     except Exception as e:
         logger.warning(f"Failed to initialize Gemini client: {e}")
         _gemini_model = None
@@ -38,7 +38,7 @@ if GROQ_API_KEY and not GROQ_API_KEY.startswith("your_actual"):
     try:
         from openai import OpenAI
         client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
-        MODEL_NAME = "llama-3.3-70b-versatile"
+        MODEL_NAME = "qwen/qwen3.8-27b"
     except Exception:
         client = None
 elif OPENAI_API_KEY and not OPENAI_API_KEY.startswith("your_actual"):

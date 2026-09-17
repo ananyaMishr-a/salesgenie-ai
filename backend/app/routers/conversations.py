@@ -31,14 +31,20 @@ def add_conversation(lead_id: int, payload: schemas.InteractionCreate, db: Sessi
     )
     db.add(interaction)
 
-    rec_title = f"Follow up with {lead.company_name}"
-    rec_desc = result["summary"][:150] + "..." if len(result["summary"]) > 150 else result["summary"]
+    action_items = result.get("action_items", [])
+    if action_items and len(action_items) > 0:
+        rec_title = f"Follow up on Action Item for {lead.company_name}"
+        rec_desc = f"{action_items[0]} Schedule a quick sync with {lead.contact_name or 'the team'} to discuss execution."
+    else:
+        rec_title = f"Schedule Follow-up with {lead.company_name}"
+        rec_desc = f"Based on the recent {payload.interaction_type.lower()}, reach out to {lead.contact_name or 'the stakeholder'} to align on technical requirements and next steps."
+
     rec = models.FollowUpRecommendation(
         lead_id=lead.lead_id,
         company_name=lead.company_name,
         title=rec_title,
         description=rec_desc,
-        priority_level="High Priority" if lead.qualification_score >= 75 else "Medium Priority"
+        priority_level="High Priority" if (lead.qualification_score or 0) >= 75 else "Medium Priority"
     )
     db.add(rec)
 
