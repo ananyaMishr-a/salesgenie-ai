@@ -22,13 +22,14 @@ graph TD
 ## 🚀 Key Features by Milestone
 
 ### Milestone 1 — Lead Management & Intelligence Engine
-- **Lead CRUD**: Create, view, search (`?q=`), filter, edit, and delete prospects.
+- **Lead CRUD**: Create, view, search (`?q=`), filter, edit, and delete prospects with custom UI confirmation modals.
 - **AI Company Research Agent**: Send lead details to Gemini AI to generate business needs, pain points, growth signals, and recommended approach.
 - **Persistence**: All lead records and generated company insights are stored in the database.
 
 ### Milestone 2 — AI Outreach & Lead Scoring
 - **Deterministic & AI Lead Scoring**: Multi-factor qualification score (0-100), priority levels (High/Medium/Low), and conversion probability.
 - **Personalized Email Generation**: AI-generated cold outreach with configurable tones (`Professional`, `Casual`, `Direct`), subject line, body, and call-to-action.
+- **Outreach Execution**: One-click **"Send via Gmail"** integration and persistent **"Save Draft"** functionality directly tied to the database.
 - **Outreach Strategy**: Auto-generated timing, channel mix, and content strategy per lead.
 
 ### Milestone 3 — Conversation Intelligence & CRM Integration
@@ -39,7 +40,7 @@ graph TD
 ### Milestone 4 — Dashboard & Automation
 - **Real-Time Analytics**: KPIs (Conversion Rate, Pipeline Value, Total Prospects) computed dynamically from database data.
 - **Pipeline Kanban Board**: Drag-and-drop or status-grouped pipeline stages (`New`, `Qualified`, `Proposal`, `Negotiation`, `Closed Won`).
-- **Follow-up Recommendations**: AI-driven next-best-action follow-up recommendations stored and updated in database (`followup_recommendations`).
+- **Proactive Recommendations**: AI-driven next-best-action follow-up recommendations (extracted from meeting action items) stored and updated in database (`followup_recommendations`).
 - **Empty States**: Displays clean empty states when no data is present instead of fake hardcoded fallback metrics.
 
 ---
@@ -113,4 +114,4 @@ npm run dev
 
 ## 🛠 Known Limitations & External Credentials
 - **CRM Integration**: Implemented as a persistent **CRM Sync Simulation** (Salesforce & HubSpot). Real OAuth credential flows can be plugged into `backend/app/routers/conversations.py` if external CRM API credentials are provided.
-- **LLM Provider**: Uses Google Gemini (`gemini-flash-latest`) as primary structured LLM provider, with Groq / OpenAI and deterministic fallback chains if API keys are missing.
+- **LLM Provider**: Uses modern AI models (`gemini-3.8-flash` and `qwen/qwen3.8-27b`) as primary structured LLM providers, with OpenAI and deterministic fallback chains if API keys are missing or quotas are exceeded.
