@@ -52,7 +52,9 @@ function MainAppContent() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('leads');
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem('salesgenie_activeTab') || 'leads';
+  });
   const [prospects, setProspects] = useState([]);
   const [selectedProspect, setSelectedProspect] = useState(null);
   const [meetings, setMeetings] = useState([]);
@@ -64,6 +66,11 @@ function MainAppContent() {
   const [isNewConversationOpen, setIsNewConversationOpen] = useState(false);
   const [isCrmSettingsOpen, setIsCrmSettingsOpen] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Persist activeTab to sessionStorage so page refreshes remember current tab
+  React.useEffect(() => {
+    sessionStorage.setItem('salesgenie_activeTab', activeTab);
+  }, [activeTab]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });

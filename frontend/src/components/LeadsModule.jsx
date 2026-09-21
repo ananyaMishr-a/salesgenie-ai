@@ -33,6 +33,15 @@ export default function LeadsModule({
   const [analyzedLeads, setAnalyzedLeads] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // Cache for enriched lead data (with intelligence) so it persists across selections
+  const enrichedLeadsCacheRef = React.useRef({});
+
+  // Helper: select a lead, preferring the enriched cached version
+  const selectLead = React.useCallback((p) => {
+    const cached = enrichedLeadsCacheRef.current[p.id];
+    setSelectedProspect(cached || p);
+  }, [setSelectedProspect]);
+
   const filteredProspects = prospectsList.filter(p => {
     const query = searchQuery.toLowerCase();
     const companyMatch = p.company ? p.company.toLowerCase().includes(query) : false;
@@ -48,6 +57,7 @@ export default function LeadsModule({
       fetchLeadById(selectedProspect.id).then(fullLead => {
         if (!isMounted) return;
         if (fullLead.hasIntelligence) {
+          enrichedLeadsCacheRef.current[fullLead.id] = fullLead;
           setSelectedProspect(fullLead);
           setAnalyzedLeads(prev => [...prev, fullLead.id]);
         }
@@ -120,7 +130,7 @@ export default function LeadsModule({
               return (
                 <div
                   key={p.id}
-                  onClick={() => setSelectedProspect(p)}
+                  onClick={() => selectLead(p)}
                   style={{
                     background: isSelected ? '#eff6ff' : '#ffffff',
                     border: isSelected ? '1px solid #3b82f6' : '1px solid #e2e8f0',
@@ -286,13 +296,22 @@ export default function LeadsModule({
                   setIsAnalyzing(true);
                   try {
                     const result = await runLeadIntelligence(selectedProspect.id);
-                    selectedProspect.insights = result.insights;
-                    selectedProspect.qualificationScore = result.qualificationScore;
+                    const enriched = {
+                      ...selectedProspect,
+                      insights: result.insights,
+                      qualificationScore: result.qualificationScore,
+                      conversionProbability: result.conversionProbability,
+                      priorityLevel: result.priorityLevel,
+                      scoringFactors: result.scoringFactors,
+                      hasIntelligence: true
+                    };
+                    enrichedLeadsCacheRef.current[enriched.id] = enriched;
+                    setSelectedProspect(enriched);
+                    setAnalyzedLeads(prev => [...prev, enriched.id]);
                   } catch (error) {
                     console.error("AI analysis error:", error);
                   } finally {
                     setTimeout(() => {
-                      setAnalyzedLeads(prev => [...prev, selectedProspect.id]);
                       setIsAnalyzing(false);
                     }, 500);
                   }
@@ -398,8 +417,10 @@ export default function LeadsModule({
               {/* Re-analyze Button */}
               <button 
                 onClick={() => {
+                  // Clear from cache and analyzed list, then clear insights to trigger re-analysis
+                  delete enrichedLeadsCacheRef.current[selectedProspect.id];
                   setAnalyzedLeads(prev => prev.filter(id => id !== selectedProspect.id));
-                  selectedProspect.insights = null;
+                  setSelectedProspect(prev => ({ ...prev, insights: [], hasIntelligence: false }));
                 }}
                 style={{
                   marginTop: '1.25rem',

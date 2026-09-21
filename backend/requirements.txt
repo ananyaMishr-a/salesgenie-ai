@@ -12,3 +12,6 @@ simple-salesforce==1.12.6
 requests==2.34.2
 psycopg2-binary==2.9.12
 groq==0.11.0
+
+pypdf>=4.0.0
+python-multipart>=0.0.9

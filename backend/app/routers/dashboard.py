@@ -94,7 +94,9 @@ def get_kpis(db: Session = Depends(get_db), current_user: models.User = Depends(
             if diff_hours > 0:
                 response_times.append(diff_hours)
         
-        if l.lead_status == "Closed Won" and l.updated_at and l.created_at:
+        stage_lower = (l.stage or l.lead_status or "").lower().replace(" ", "-")
+        is_closed_won = stage_lower in ["closed-won", "closed_won", "won"]
+        if is_closed_won and l.updated_at and l.created_at:
             diff_days = (l.updated_at - l.created_at).total_seconds() / (3600.0 * 24.0)
             if diff_days >= 0:
                 sales_cycles.append(diff_days)

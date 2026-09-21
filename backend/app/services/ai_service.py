@@ -92,8 +92,11 @@ class _LeadScoreSchema(BaseModel):
 
 
 def _extract_json(raw_text: str) -> str:
-    """Strips ```json ... ``` style markdown fences some LLMs wrap output in."""
+    """Strips ```json ... ``` style markdown fences and <think>...</think> blocks some LLMs wrap output in."""
     text = raw_text.strip()
+    # Strip Qwen-style <think>...</think> reasoning blocks
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    # Strip markdown code fences
     if text.startswith("```"):
         text = text.strip("`")
         text = re.sub(r"^json\s*", "", text, count=1, flags=re.IGNORECASE)
@@ -134,6 +137,7 @@ def _call_llm(prompt: str, system: str = "You are a helpful B2B sales assistant.
                 {"role": "user", "content": prompt},
             ],
             temperature=0.7,
+            max_tokens=800,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
@@ -1111,3 +1115,19 @@ def generate_followup_recommendations(leads_list: list) -> list:
             }
         ]
     return recs
+
+
+def transcribe_audio(file_path: str) -> str:
+    """Transcribes an audio file using Groq Whisper API (via openai client)"""
+    if not client:
+        raise Exception("Groq/OpenAI client not configured.")
+    try:
+        with open(file_path, "rb") as audio_file:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-large-v3-turbo",
+                file=audio_file
+            )
+            return transcription.text
+    except Exception as e:
+        logger.error(f"Audio transcription failed: {e}")
+        raise

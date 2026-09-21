@@ -7,7 +7,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-import { submitConversationTranscript, mapConversationFromApi } from '../api/conversationsApi';
+import { submitConversationTranscript, uploadConversationTranscript, mapConversationFromApi } from '../api/conversationsApi';
 
 export default function NewConversationModal({ isOpen, onClose, onAddMeeting, selectedProspect, prospectsList = [] }) {
   const [selectedLeadId, setSelectedLeadId] = useState('');
@@ -15,6 +15,7 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
   const [transcriptText, setTranscriptText] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -40,7 +41,7 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
   if (!isOpen) return null;
 
   const steps = [
-    "Ingesting audio transcript payload...",
+    selectedFile ? "Extracting text and transcribing file payload..." : "Ingesting text transcript payload...",
     "Running LLM sentiment & intent classification...",
     "Extracting key discussion points & pain points...",
     "Synthesizing CRM action items & due dates..."
@@ -65,8 +66,8 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
       return;
     }
 
-    if (!transcriptText.trim()) {
-      setErrorMessage("Please enter or paste a meeting transcript first.");
+    if (!transcriptText.trim() && !selectedFile) {
+      setErrorMessage("Please enter a meeting transcript or upload a file first.");
       return;
     }
 
@@ -76,12 +77,19 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
     const targetLead = prospectsList.find(p => String(p.id) === String(actualLeadId)) || selectedProspect || { contactName: clientName, company, role };
 
     try {
-      const aiResult = await submitConversationTranscript(actualLeadId, transcriptText, 'Call');
+      let aiResult;
+      if (selectedFile) {
+        aiResult = await uploadConversationTranscript(actualLeadId, selectedFile, 'Call');
+      } else {
+        aiResult = await submitConversationTranscript(actualLeadId, transcriptText, 'Call');
+      }
+      
       const normalizedMeeting = mapConversationFromApi(aiResult, targetLead);
 
       setIsProcessing(false);
       onAddMeeting(normalizedMeeting);
       setTranscriptText('');
+      setSelectedFile(null);
       onClose();
     } catch (err) {
       setIsProcessing(false);
@@ -234,17 +242,73 @@ export default function NewConversationModal({ isOpen, onClose, onAddMeeting, se
           </div>
 
           <div>
-            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.5rem' }}>
               Meeting Transcript / Audio Notes
             </label>
+            
+            {/* File Upload Section */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <input 
+                type="file" 
+                id="transcript-upload"
+                accept=".txt,.pdf,audio/*"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    setSelectedFile(e.target.files[0]);
+                  } else {
+                    setSelectedFile(null);
+                  }
+                }}
+                style={{ display: 'none' }}
+              />
+              <label 
+                htmlFor="transcript-upload"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#334155',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                <FileText size={14} /> 
+                {selectedFile ? selectedFile.name : "Upload PDF, TXT, or Audio (MP3/WAV)"}
+              </label>
+              {selectedFile && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  style={{
+                    marginLeft: '0.5rem',
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+
             <textarea
               rows={6}
-              placeholder="Paste raw conversation text here..."
+              placeholder={selectedFile ? "File selected. You can leave this blank." : "Or paste raw conversation text here..."}
               value={transcriptText}
               onChange={(e) => setTranscriptText(e.target.value)}
+              disabled={!!selectedFile}
               style={{
                 width: '100%',
-                background: '#ffffff',
+                background: selectedFile ? '#f8fafc' : '#ffffff',
                 border: '1px solid #cbd5e1',
                 borderRadius: '8px',
                 padding: '0.75rem',

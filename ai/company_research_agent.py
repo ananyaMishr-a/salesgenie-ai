@@ -73,9 +73,14 @@ def _call_gemini(company_name: str, domain: str | None) -> dict:
     response = client.chat.completions.create(
         model=model_name,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.0
+        temperature=0.0,
+        max_tokens=800
     )
     raw_text = response.choices[0].message.content.strip()
+
+    # Strip Qwen-style <think>...</think> reasoning blocks
+    import re
+    raw_text = re.sub(r"<think>.*?</think>", "", raw_text, flags=re.DOTALL).strip()
 
     # Groq sometimes wraps JSON in ```json ... ``` -- strip that off if present
     if raw_text.startswith("```"):

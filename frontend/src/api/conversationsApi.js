@@ -177,6 +177,24 @@ export async function submitConversationTranscript(leadId, rawTranscript, intera
   return data;
 }
 
+export async function uploadConversationTranscript(leadId, file, interactionType = "Call") {
+  if (!leadId) {
+    throw new Error("Please select a lead first.");
+  }
+  const formData = new FormData();
+  formData.append("interaction_type", interactionType);
+  formData.append("file", file);
+  
+  // Use apiClient.post directly but override headers to let browser set boundary
+  const data = await apiClient.post(`/leads/${leadId}/conversations/upload`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+  return data;
+}
+
+
 export async function fetchConversationsForLead(leadId) {
   if (!leadId) return [];
   const data = await apiClient.get(`/leads/${leadId}/conversations`);

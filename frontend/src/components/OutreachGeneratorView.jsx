@@ -12,7 +12,7 @@ import {
   Sparkles,
   CheckCircle2
 } from 'lucide-react';
-import { generateOutreachEmail, fetchOutreachStrategy, updateCampaign } from '../api/outreachApi';
+import { generateOutreachEmail, fetchOutreachStrategy, fetchLeadCampaigns, updateCampaign } from '../api/outreachApi';
 
 export default function OutreachGeneratorView({ prospect, onBack }) {
   const [selectedTone, setSelectedTone] = useState('Professional');
@@ -77,9 +77,37 @@ export default function OutreachGeneratorView({ prospect, onBack }) {
     }
   };
 
+  // On mount: load the LAST SAVED campaign from DB instead of generating a new one
   useEffect(() => {
-    runGeneration(selectedTone, false);
-  }, [prospect]);
+    if (!prospect?.id) return;
+    let isMounted = true;
+
+    const loadExistingCampaign = async () => {
+      try {
+        // 1. Try to load the most recent saved campaign
+        const campaigns = await fetchLeadCampaigns(prospect.id);
+        if (!isMounted) return;
+
+        if (campaigns && campaigns.length > 0) {
+          const latest = campaigns[0]; // already sorted desc by created_at
+          setSubject(latest.email_subject || '');
+          setEmailBody(latest.email_content || '');
+          setCampaignId(latest.campaign_id);
+        }
+
+        // 2. Always load the strategy (it's a GET, no cost)
+        const stratRes = await fetchOutreachStrategy(prospect.id).catch(() => null);
+        if (!isMounted) return;
+        if (stratRes) setStrategy(stratRes);
+
+      } catch (err) {
+        console.warn("Could not load existing campaign:", err);
+      }
+    };
+
+    loadExistingCampaign();
+    return () => { isMounted = false; };
+  }, [prospect?.id]);
 
   const handleToneChange = (tone) => {
     setSelectedTone(tone);

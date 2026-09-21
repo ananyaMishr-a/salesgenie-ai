@@ -72,6 +72,26 @@ def get_outreach_strategy(lead_id: int, db: Session = Depends(get_db), current_u
     lead = db.query(models.Lead).filter(models.Lead.lead_id == lead_id, models.Lead.user_id == current_user.user_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    
+    # Check if a strategy already exists for this lead
+    import json
+    existing_strategy = db.query(models.OutreachStrategy).filter(
+        models.OutreachStrategy.lead_id == lead_id
+    ).order_by(models.OutreachStrategy.generated_at.desc()).first()
+
+    if existing_strategy:
+        try:
+            return json.loads(existing_strategy.strategy_json)
+        except Exception:
+            pass
+
+    # If no strategy exists, generate one, save it, and return it
     strategy = ai_service.generate_outreach_strategy(lead)
+    
+    new_strat_record = models.OutreachStrategy(
+        lead_id=lead.lead_id,
+        strategy_json=json.dumps(strategy)
+    )
+    db.add(new_strat_record)
+    db.commit()
+    
     return strategy
