@@ -367,6 +367,31 @@ export default function LeadsModule({
               {/* Insights List */}
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {(() => {
+                  // Helper function to format the backend string representations like '{"1. Item", "2. Item"}'
+                  const formatInsightText = (text) => {
+                    if (typeof text !== 'string') return text;
+                    const trimmed = text.trim();
+                    if (trimmed.startsWith('{"') && trimmed.endsWith('"}')) {
+                      // It's a stringified array/set from Postgres/Python
+                      const inner = trimmed.substring(2, trimmed.length - 2);
+                      const items = inner.split('","');
+                      return (
+                        <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                          {items.map((item, i) => {
+                            // Clean any lingering quotes and trim
+                            const cleanItem = item.replace(/^"/, '').replace(/"$/, '').trim();
+                            return (
+                              <li key={i} style={{ marginBottom: '0.375rem' }}>
+                                {cleanItem}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      );
+                    }
+                    return text;
+                  };
+
                   const rawInsights = selectedProspect?.insights;
                   const insightsList = Array.isArray(rawInsights)
                     ? rawInsights
@@ -392,7 +417,7 @@ export default function LeadsModule({
                           <Sparkles size={14} color="#2563eb" /> {ins.type || ins.label || 'Insight'}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#334155', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
-                          {ins.detail}
+                          {formatInsightText(ins.detail)}
                         </div>
                       </div>
                     ))
